@@ -22,7 +22,7 @@ go/paste/abc123/raw → raw snippet text
 - **Universal** – works in Safari, Chrome, Firefox, Arc, Edge, and more
 - **Instant redirects** – 302 redirect with query-string passthrough (`go/search?q=foo`)
 - **Nested shortcuts** – exact paths and longest-prefix matching (`go/team/wiki`)
-- **Path templates** – use `{path}` in destinations (`go/search/foo` → `...?q=foo`)
+- **Path templates** – use `{path}` when a shortcut should consume the remaining path (`go/search/foo` → `...?q=foo`)
 - **Pastebin** – automatically saves copied text snippets; edit, search, open, and copy them
 - **Clean UI** – tool switcher, inline forms, search/filter, copy actions
 - **Persistent** – links and pastes stored in `UserDefaults`; survive reboots
