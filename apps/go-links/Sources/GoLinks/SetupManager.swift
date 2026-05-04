@@ -125,6 +125,7 @@ final class SetupManager: ObservableObject {
         KEY_PATH="\(AppConfig.privateKeyPath)"
         P12_PATH="\(AppConfig.p12Path)"
         P12_PASSWORD="\(AppConfig.p12Password)"
+        USER_HOME="\(NSHomeDirectory())"
 
         if ! /usr/bin/grep -Eq "^[[:space:]]*127[.]0[.]0[.]1[[:space:]]+([^#[:space:]]+[[:space:]]+)*${HOST_NAME}([[:space:]]|$)" /etc/hosts; then
             /usr/bin/printf '\\n127.0.0.1 %s  %s\\n' "$HOST_NAME" "$HOST_MARKER" >> /etc/hosts
@@ -160,26 +161,55 @@ final class SetupManager: ObservableObject {
         /sbin/pfctl -a "$PF_ANCHOR_NAME" -f "$PF_ANCHOR_FILE" 2>&1
 
         /bin/mkdir -p "$CERT_DIR"
+        NEEDS_CERT=0
         if [ ! -f "$CERT_PATH" ] || [ ! -f "$P12_PATH" ]; then
-            SSL_CONFIG="$(/usr/bin/mktemp /tmp/golinks-ssl.XXXXXX)"
-            /usr/bin/printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=%s\\n[v3]\\nsubjectAltName=DNS:%s,IP:127.0.0.1\\nkeyUsage=keyEncipherment,dataEncipherment\\nextendedKeyUsage=serverAuth\\n' "$HOST_NAME" "$HOST_NAME" > "$SSL_CONFIG"
-            /usr/bin/openssl req -x509 -newkey rsa:2048 \\
-                -keyout "$KEY_PATH" \\
-                -out "$CERT_PATH" \\
-                -days 3650 -nodes -config "$SSL_CONFIG" 2>/dev/null
+            NEEDS_CERT=1
+        elif ! /usr/bin/openssl x509 -in "$CERT_PATH" -noout -text 2>/dev/null | /usr/bin/grep -q "Digital Signature"; then
+            NEEDS_CERT=1
+        elif /usr/bin/openssl x509 -in "$CERT_PATH" -noout -issuer 2>/dev/null | /usr/bin/grep -q "issuer=CN = go\\|issuer=CN=go"; then
+            NEEDS_CERT=1
+        fi
+
+        if [ "$NEEDS_CERT" -eq 1 ]; then
+            MKCERT_BIN=""
+            if [ -x /opt/homebrew/bin/mkcert ]; then
+                MKCERT_BIN="/opt/homebrew/bin/mkcert"
+            elif [ -x /usr/local/bin/mkcert ]; then
+                MKCERT_BIN="/usr/local/bin/mkcert"
+            fi
+
+            MKCERT_CAROOT="$USER_HOME/Library/Application Support/mkcert"
+            USED_MKCERT=0
+            if [ -n "$MKCERT_BIN" ] && [ -f "$MKCERT_CAROOT/rootCA.pem" ]; then
+                CAROOT="$MKCERT_CAROOT" "$MKCERT_BIN" \\
+                    -cert-file "$CERT_PATH" \\
+                    -key-file "$KEY_PATH" \\
+                    "$HOST_NAME" 127.0.0.1 >/dev/null
+                USED_MKCERT=1
+            else
+                SSL_CONFIG="$(/usr/bin/mktemp /tmp/golinks-ssl.XXXXXX)"
+                /usr/bin/printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=%s\\n[v3]\\nbasicConstraints=critical,CA:TRUE\\nsubjectAltName=DNS:%s,IP:127.0.0.1\\nkeyUsage=critical,digitalSignature,keyEncipherment,keyCertSign\\nextendedKeyUsage=serverAuth\\n' "$HOST_NAME" "$HOST_NAME" > "$SSL_CONFIG"
+                /usr/bin/openssl req -x509 -newkey rsa:2048 \\
+                    -keyout "$KEY_PATH" \\
+                    -out "$CERT_PATH" \\
+                    -days 3650 -nodes -config "$SSL_CONFIG" 2>/dev/null
+                /bin/rm -f "$SSL_CONFIG"
+            fi
             /usr/bin/openssl pkcs12 -export \\
                 -inkey "$KEY_PATH" \\
                 -in "$CERT_PATH" \\
                 -out "$P12_PATH" \\
                 -passout pass:"$P12_PASSWORD" 2>/dev/null
-            /bin/rm -f "$SSL_CONFIG"
             /bin/chmod 644 "$CERT_PATH" "$P12_PATH"
             /bin/chmod 600 "$KEY_PATH"
-        fi
 
-        /usr/bin/security add-trusted-cert -d -r trustRoot \\
-            -k /Library/Keychains/System.keychain \\
-            "$CERT_PATH" 2>/dev/null || true
+            if [ "$USED_MKCERT" -eq 0 ]; then
+                /usr/bin/security add-trusted-cert -d -r trustRoot \\
+                    -p ssl -p basic \\
+                    -k /Library/Keychains/System.keychain \\
+                    "$CERT_PATH" 2>/dev/null || true
+            fi
+        fi
         """
     }
 
