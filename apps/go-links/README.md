@@ -81,10 +81,6 @@ This will prompt for your admin password **once** and perform two operations:
 
 The app itself never runs as root.
 
-Safari may search `go/shortcut` instead of navigating. Use
-`go.localhost/shortcut` in Safari, or include the scheme with
-`http://go/shortcut`.
-
 ---
 
 ## How it works
