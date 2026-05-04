@@ -1,0 +1,61 @@
+# ============================================================
+#  Go Links – macOS menu bar app
+#  Requires: Xcode Command Line Tools (swift, swiftc)
+#  Targets macOS 13 (Ventura)+
+# ============================================================
+
+APP_NAME    = GoLinks
+BUILD_DIR   = .build
+APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
+BINARY      = $(BUILD_DIR)/release/$(APP_NAME)
+INFO_PLIST  = Resources/Info.plist
+INSTALL_DIR = /Applications
+
+.PHONY: build app install clean run open
+
+# ------------------------------------
+# 1. Compile with Swift Package Manager
+# ------------------------------------
+build:
+	swift build -c release 2>&1
+
+# ------------------------------------
+# 2. Package into .app bundle
+# ------------------------------------
+app: build
+	@echo "→ Creating $(APP_BUNDLE) …"
+	@rm -rf "$(APP_BUNDLE)"
+	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
+	@mkdir -p "$(APP_BUNDLE)/Contents/Resources"
+	@cp "$(BINARY)"     "$(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)"
+	@cp "$(INFO_PLIST)" "$(APP_BUNDLE)/Contents/Info.plist"
+	@# Code-sign ad-hoc so macOS allows the app to run
+	@codesign --force --deep --sign - "$(APP_BUNDLE)" 2>/dev/null || true
+	@echo "✓ $(APP_BUNDLE) ready"
+
+# ------------------------------------
+# 3. Install to /Applications
+# ------------------------------------
+install: app
+	@echo "→ Installing to $(INSTALL_DIR)/$(APP_NAME).app …"
+	@rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
+	@cp -R "$(APP_BUNDLE)" "$(INSTALL_DIR)/"
+	@echo "✓ Installed. Launch Go Links from /Applications."
+
+# ------------------------------------
+# 4. Run directly (dev mode, no bundle)
+# ------------------------------------
+run: build
+	"$(BINARY)"
+
+# ------------------------------------
+# 5. Open the built app bundle
+# ------------------------------------
+open: app
+	open "$(APP_BUNDLE)"
+
+# ------------------------------------
+# 6. Clean
+# ------------------------------------
+clean:
+	rm -rf .build

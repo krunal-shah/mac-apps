@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle identification -->
+    <key>CFBundleIdentifier</key>
+    <string>com.golinks.app</string>
+    <key>CFBundleName</key>
+    <string>GoLinks</string>
+    <key>CFBundleDisplayName</key>
+    <string>Go Links</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleExecutable</key>
+    <string>GoLinks</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <!-- Menu bar only – no Dock icon -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- Rendering -->
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+
+    <!-- Permission descriptions (macOS privacy) -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Go Links uses Apple Events to run privileged setup commands (adding /etc/hosts entry and pf port-forwarding rule).</string>
+
+    <!-- Minimum macOS version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+</dict>
+</plist>
