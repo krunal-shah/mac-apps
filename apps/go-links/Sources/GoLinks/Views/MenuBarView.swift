@@ -4,7 +4,19 @@ struct MenuBarView: View {
     @EnvironmentObject private var store: GoLinkStore
     @EnvironmentObject private var setup: SetupManager
 
+    @State private var screen: Screen = .links
     @State private var searchText = ""
+
+    private enum Screen: Equatable {
+        case links
+        case add
+        case edit(GoLink)
+
+        var isEditing: Bool {
+            if case .links = self { return false }
+            return true
+        }
+    }
 
     private var filteredLinks: [GoLink] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -16,43 +28,95 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            topBar
             Divider()
-            searchBar
-            Divider()
-            content
-            Divider()
-            footer
+            mainContent
         }
-        .frame(width: 460, height: 540)
+        .frame(width: 480, height: 560)
     }
 
-    private var header: some View {
+    private var topBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "arrow.triangle.branch")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.accentColor)
+            if screen.isEditing {
+                iconButton("chevron.left", help: "Back") {
+                    screen = .links
+                }
+            } else {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.accentColor)
+                    .frame(width: 26, height: 26)
+            }
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(AppConfig.appName)
+                Text(titleText)
                     .font(.headline)
-                Text("\(store.links.count) link\(store.links.count == 1 ? "" : "s")")
+                Text(subtitleText)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
 
             Spacer()
 
-            iconButton("gearshape", help: "Setup") {
-                SetupPanel.shared.show()
-            }
+            if !screen.isEditing {
+                iconButton("gearshape", help: "Setup") {
+                    SetupPanel.shared.show()
+                }
 
-            iconButton("plus", help: "Add Link") {
-                LinkEditorPanel.shared.show(mode: .add, store: store)
+                iconButton("plus", help: "Add Link") {
+                    screen = .add
+                }
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private var titleText: String {
+        switch screen {
+        case .links:
+            return AppConfig.appName
+        case .add:
+            return "Add Link"
+        case .edit:
+            return "Edit Link"
+        }
+    }
+
+    private var subtitleText: String {
+        switch screen {
+        case .links:
+            return "\(store.links.count) link\(store.links.count == 1 ? "" : "s")"
+        case .add:
+            return "Create a shortcut"
+        case .edit(let link):
+            return "\(AppConfig.hostName)/\(link.shortName)"
+        }
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        switch screen {
+        case .links:
+            VStack(spacing: 0) {
+                searchBar
+                Divider()
+                linkContent
+                Divider()
+                footer
+            }
+        case .add:
+            AddEditLinkView(mode: .add) {
+                screen = .links
+            }
+            .environmentObject(store)
+        case .edit(let link):
+            AddEditLinkView(mode: .edit(link)) {
+                screen = .links
+            }
+            .environmentObject(store)
+        }
     }
 
     private var searchBar: some View {
@@ -82,7 +146,7 @@ struct MenuBarView: View {
     }
 
     @ViewBuilder
-    private var content: some View {
+    private var linkContent: some View {
         if store.links.isEmpty {
             emptyState
         } else if filteredLinks.isEmpty {
@@ -97,7 +161,7 @@ struct MenuBarView: View {
                     ForEach(filteredLinks) { link in
                         GoLinkRow(
                             link: link,
-                            onEdit: { LinkEditorPanel.shared.show(mode: .edit(link), store: store) },
+                            onEdit: { screen = .edit(link) },
                             onDelete: { store.delete(link) }
                         )
 
@@ -127,7 +191,7 @@ struct MenuBarView: View {
             }
 
             Button {
-                LinkEditorPanel.shared.show(mode: .add, store: store)
+                screen = .add
             } label: {
                 Label("Add Link", systemImage: "plus")
             }

@@ -56,27 +56,15 @@ struct AddEditLinkView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
             form
+            Spacer(minLength: 0)
             Divider()
             actions
         }
-        .frame(width: 380)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
             focusedField = .name
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "link.badge.plus")
-                .foregroundColor(.accentColor)
-            Text(mode.title)
-                .font(.headline)
-            Spacer()
-        }
-        .padding(16)
     }
 
     private var form: some View {
@@ -121,7 +109,7 @@ struct AddEditLinkView: View {
                 errorText(urlError)
             }
         }
-        .padding(16)
+        .padding(18)
     }
 
     private var actions: some View {
