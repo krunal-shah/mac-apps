@@ -5,21 +5,28 @@ final class GoLinkCoreTests: XCTestCase {
     func testNameNormalizationAcceptsCommonInput() throws {
         XCTAssertEqual(try GoLinkInput.normalizedName(" Docs "), "docs")
         XCTAssertEqual(try GoLinkInput.normalizedName("go/Team_Wiki"), "team_wiki")
+        XCTAssertEqual(try GoLinkInput.normalizedName("go/Team/Wiki"), "team/wiki")
         XCTAssertEqual(try GoLinkInput.normalizedName("https://go/Launch-Plan"), "launch-plan")
     }
 
     func testNameNormalizationRejectsInvalidInput() {
         XCTAssertThrowsError(try GoLinkInput.normalizedName(""))
         XCTAssertThrowsError(try GoLinkInput.normalizedName("-bad"))
-        XCTAssertThrowsError(try GoLinkInput.normalizedName("bad/path"))
+        XCTAssertThrowsError(try GoLinkInput.normalizedName("bad//path"))
         XCTAssertThrowsError(try GoLinkInput.normalizedName("bad path"))
         XCTAssertThrowsError(try GoLinkInput.normalizedName("paste"))
+        XCTAssertThrowsError(try GoLinkInput.normalizedName("paste/item"))
     }
 
     func testURLNormalizationAddsSchemeAndRestrictsProtocols() throws {
         XCTAssertEqual(try GoLinkInput.normalizedURL("example.com"), "https://example.com")
         XCTAssertEqual(try GoLinkInput.normalizedURL("http://example.com"), "http://example.com")
+        XCTAssertEqual(
+            try GoLinkInput.normalizedURL("www.google.com/search?q={path}"),
+            "https://www.google.com/search?q={path}"
+        )
         XCTAssertThrowsError(try GoLinkInput.normalizedURL("ftp://example.com"))
+        XCTAssertThrowsError(try GoLinkInput.normalizedURL("www.google.com/search?q={term}"))
     }
 
     func testRouterRedirectsAndPreservesPathAndQuery() {
@@ -35,6 +42,35 @@ final class GoLinkCoreTests: XCTestCase {
 
         XCTAssertTrue(response?.contains("HTTP/1.1 302 Found") == true)
         XCTAssertTrue(response?.contains("Location: https://example.com/base/team%20page?tab=owned") == true)
+    }
+
+    func testRouterResolvesLongestNestedShortcutPrefix() {
+        let resolver = GoLinkResolver()
+        resolver.replace(with: [
+            GoLink(shortName: "abc", destinationURL: "https://fallback.example.com"),
+            GoLink(shortName: "abc/def", destinationURL: "https://example.com/base")
+        ])
+        let router = GoLinkRouter(linkResolver: resolver, pasteResolver: PasteResolver())
+        let request = Data("GET /abc/def/ghi HTTP/1.1\r\nHost: go\r\n\r\n".utf8)
+
+        let response = String(data: router.responseData(for: request, scheme: "http"), encoding: .utf8)
+
+        XCTAssertTrue(response?.contains("HTTP/1.1 302 Found") == true)
+        XCTAssertTrue(response?.contains("Location: https://example.com/base/ghi") == true)
+    }
+
+    func testRouterUsesPathTemplateForRemainingPath() {
+        let resolver = GoLinkResolver()
+        resolver.replace(with: [
+            GoLink(shortName: "abc", destinationURL: "https://www.google.com/search?q={path}")
+        ])
+        let router = GoLinkRouter(linkResolver: resolver, pasteResolver: PasteResolver())
+        let request = Data("GET /abc/hij?safe=off HTTP/1.1\r\nHost: go\r\n\r\n".utf8)
+
+        let response = String(data: router.responseData(for: request, scheme: "http"), encoding: .utf8)
+
+        XCTAssertTrue(response?.contains("HTTP/1.1 302 Found") == true)
+        XCTAssertTrue(response?.contains("Location: https://www.google.com/search?q=hij&safe=off") == true)
     }
 
     func testRouterRejectsUnsupportedMethods() {

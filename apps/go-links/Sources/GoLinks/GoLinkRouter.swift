@@ -29,11 +29,17 @@ struct GoLinkRouter {
             response = pasteIndexResponse(scheme: scheme)
         case .paste(let id, let raw):
             response = pasteResponse(id: id, raw: raw, scheme: scheme)
-        case .lookup(let shortName, let suffixPath, let query):
-            if let destination = linkResolver.destination(for: shortName) {
-                response = .redirect(to: destinationURL(base: destination, suffixPath: suffixPath, query: query))
+        case .lookup(let path, let query):
+            if let resolution = linkResolver.resolution(for: path) {
+                response = .redirect(
+                    to: destinationURL(
+                        base: resolution.link.destinationURL,
+                        suffixPath: resolution.suffixPath,
+                        query: query
+                    )
+                )
             } else {
-                response = missingResponse(shortName: shortName, scheme: scheme)
+                response = missingResponse(shortName: path, scheme: scheme)
             }
         case .invalid:
             response = .badRequest()
@@ -46,7 +52,7 @@ struct GoLinkRouter {
         case index
         case pasteIndex
         case paste(id: String, raw: Bool)
-        case lookup(shortName: String, suffixPath: String, query: String?)
+        case lookup(path: String, query: String?)
         case invalid
     }
 
@@ -69,7 +75,6 @@ struct GoLinkRouter {
         guard let rawShortName = pathParts.first, !rawShortName.isEmpty else { return .invalid }
 
         let decodedName = String(rawShortName).removingPercentEncoding ?? String(rawShortName)
-        let suffixPath = pathParts.count > 1 ? "/" + String(pathParts[1]) : ""
 
         if decodedName == AppConfig.pastePath {
             guard pathParts.count > 1 else { return .pasteIndex }
@@ -80,7 +85,7 @@ struct GoLinkRouter {
             return .paste(id: id, raw: raw)
         }
 
-        return .lookup(shortName: decodedName, suffixPath: suffixPath, query: query)
+        return .lookup(path: path, query: query)
     }
 
     private func normalizedOriginTarget(_ rawTarget: String) -> String {
@@ -96,6 +101,10 @@ struct GoLinkRouter {
     }
 
     private func destinationURL(base: String, suffixPath: String, query: String?) -> String {
+        if base.contains(AppConfig.pathPlaceholder) {
+            return templatedDestinationURL(base: base, suffixPath: suffixPath, query: query)
+        }
+
         guard var components = URLComponents(string: base) else {
             return base
         }
@@ -109,15 +118,36 @@ struct GoLinkRouter {
             components.percentEncodedPath = basePath + suffixPath
         }
 
-        if let query, !query.isEmpty {
-            if let existing = components.percentEncodedQuery, !existing.isEmpty {
-                components.percentEncodedQuery = "\(existing)&\(query)"
-            } else {
-                components.percentEncodedQuery = query
-            }
-        }
+        appendRawQuery(query, to: &components)
 
         return components.url?.absoluteString ?? base
+    }
+
+    private func templatedDestinationURL(base: String, suffixPath: String, query: String?) -> String {
+        let pathValue = suffixPath.hasPrefix("/") ? String(suffixPath.dropFirst()) : suffixPath
+        let destination = base.replacingOccurrences(of: AppConfig.pathPlaceholder, with: pathValue)
+
+        guard var components = URLComponents(string: destination) else {
+            return appendRawQuery(query, to: destination)
+        }
+
+        appendRawQuery(query, to: &components)
+        return components.url?.absoluteString ?? appendRawQuery(query, to: destination)
+    }
+
+    private func appendRawQuery(_ query: String?, to components: inout URLComponents) {
+        guard let query, !query.isEmpty else { return }
+
+        if let existing = components.percentEncodedQuery, !existing.isEmpty {
+            components.percentEncodedQuery = "\(existing)&\(query)"
+        } else {
+            components.percentEncodedQuery = query
+        }
+    }
+
+    private func appendRawQuery(_ query: String?, to destination: String) -> String {
+        guard let query, !query.isEmpty else { return destination }
+        return destination.contains("?") ? "\(destination)&\(query)" : "\(destination)?\(query)"
     }
 
     private func indexResponse(scheme: String) -> HTTPResponse {

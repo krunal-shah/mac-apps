@@ -8,6 +8,7 @@ in **any browser** to redirect, or open `go/paste` to browse copied text.
 go/gh      →  https://github.com
 go/meet    →  https://meet.google.com
 go/docs    →  https://docs.google.com/…
+go/search/openai → https://www.google.com/search?q=openai
 go/jira    →  https://yourcompany.atlassian.net
 go/paste   →  paste index
 go/paste/abc123/raw → raw snippet text
@@ -20,6 +21,8 @@ go/paste/abc123/raw → raw snippet text
 - **Menu bar app** – lives in the menu bar, no Dock icon
 - **Universal** – works in Safari, Chrome, Firefox, Arc, Edge, and more
 - **Instant redirects** – 302 redirect with query-string passthrough (`go/search?q=foo`)
+- **Nested shortcuts** – exact paths and longest-prefix matching (`go/team/wiki`)
+- **Path templates** – use `{path}` in destinations (`go/search/foo` → `...?q=foo`)
 - **Pastebin** – automatically saves copied text snippets; edit, search, open, and copy them
 - **Clean UI** – tool switcher, inline forms, search/filter, copy actions
 - **Persistent** – links and pastes stored in `UserDefaults`; survive reboots

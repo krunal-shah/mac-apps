@@ -47,7 +47,7 @@ enum GoLinkValidationError: LocalizedError, Equatable {
         case .emptyName:
             return "Enter a short name."
         case .invalidName:
-            return "Use 1-64 lowercase letters, numbers, hyphens, or underscores. Start with a letter or number."
+            return "Use slash-separated segments of letters, numbers, hyphens, or underscores."
         case .duplicateName:
             return "That short name already exists."
         case .reservedName:
@@ -80,15 +80,18 @@ enum GoLinkInput {
             throw GoLinkValidationError.emptyName
         }
 
-        let pattern = #"^[a-z0-9][a-z0-9_-]{0,63}$"#
-        guard value.range(of: pattern, options: .regularExpression) != nil else {
+        let segmentPattern = #"^[a-z0-9][a-z0-9_-]{0,63}$"#
+        let segments = value.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        guard segments.allSatisfy({ !$0.isEmpty && $0.range(of: segmentPattern, options: .regularExpression) != nil }) else {
             throw GoLinkValidationError.invalidName
         }
-        guard !AppConfig.reservedShortNames.contains(value) else {
+        guard let firstSegment = segments.first,
+              !AppConfig.reservedShortNames.contains(firstSegment)
+        else {
             throw GoLinkValidationError.reservedName
         }
 
-        return value
+        return segments.joined(separator: "/")
     }
 
     static func normalizedURL(_ rawValue: String) throws -> String {
@@ -107,7 +110,13 @@ enum GoLinkInput {
             candidate = trimmed
         }
 
-        guard let components = URLComponents(string: candidate),
+        guard !hasUnsupportedPlaceholder(in: candidate) else {
+            throw GoLinkValidationError.invalidURL
+        }
+
+        let validationCandidate = destinationValidationCandidate(candidate)
+
+        guard let components = URLComponents(string: validationCandidate),
               let scheme = components.scheme?.lowercased(),
               let host = components.host,
               !host.isEmpty
@@ -119,11 +128,33 @@ enum GoLinkInput {
             throw GoLinkValidationError.unsupportedURLScheme
         }
 
-        guard let normalized = components.url?.absoluteString else {
+        guard candidate.contains(AppConfig.pathPlaceholder) else {
+            guard let normalized = components.url?.absoluteString else {
+                throw GoLinkValidationError.invalidURL
+            }
+            return normalized
+        }
+
+        guard components.url != nil else {
             throw GoLinkValidationError.invalidURL
         }
 
-        return normalized
+        return candidate
+    }
+
+    private static func destinationValidationCandidate(_ value: String) -> String {
+        value.replacingOccurrences(of: AppConfig.pathPlaceholder, with: "example")
+    }
+
+    private static func hasUnsupportedPlaceholder(in value: String) -> Bool {
+        let pattern = #"\{[^}]+\}"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+
+        let nsValue = value as NSString
+        let matches = regex.matches(in: value, range: NSRange(location: 0, length: nsValue.length))
+        return matches.contains { match in
+            nsValue.substring(with: match.range) != AppConfig.pathPlaceholder
+        }
     }
 }
 
