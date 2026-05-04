@@ -38,13 +38,14 @@ final class SetupManager: ObservableObject {
 
     private func checkHostsEntry() -> Bool {
         let lines = (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?.components(separatedBy: "\n") ?? []
-        return lines.contains { line in
-            let t = line.trimmingCharacters(in: .whitespaces)
-            guard !t.hasPrefix("#"), t.hasPrefix("127.0.0.1") else { return false }
-            return t.split(whereSeparator: \.isWhitespace)
+        let configuredHosts = lines.reduce(into: Set<String>()) { hosts, line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.hasPrefix("#"), trimmed.hasPrefix("127.0.0.1") else { return }
+            trimmed.split(whereSeparator: \.isWhitespace)
                 .dropFirst()
-                .contains { $0 == AppConfig.hostName }
+                .forEach { hosts.insert(String($0)) }
         }
+        return Set(AppConfig.hostAliases).isSubset(of: configuredHosts)
     }
 
     private func checkPFConf() -> Bool {
@@ -71,7 +72,9 @@ final class SetupManager: ObservableObject {
         let nat = shell("pfctl -s nat 2>/dev/null")
         let hosts = (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?
             .components(separatedBy: "\n")
-            .first { $0.contains("127.0.0.1 \(AppConfig.hostName)") }
+            .first { line in
+                AppConfig.hostAliases.allSatisfy { line.contains($0) }
+            }
         diagnostics = Diagnostics(
             port80Process: port80,
             port9876Process: port9876,
@@ -114,8 +117,10 @@ final class SetupManager: ObservableObject {
         #!/bin/bash
         set -e
 
-        HOST_NAME="\(AppConfig.hostName)"
+        PRIMARY_HOST="\(AppConfig.hostName)"
+        HOST_NAMES="\(AppConfig.hostsFileEntry)"
         HOST_MARKER="# \(AppConfig.setupMarker)"
+        CERT_SUBJECT_ALT_NAMES="\(AppConfig.certificateSubjectAltNames)"
         PF_ANCHOR_NAME="\(AppConfig.pfAnchorName)"
         PF_ANCHOR_FILE="\(AppConfig.pfAnchorFile)"
         HTTP_PORT="\(AppConfig.httpPort)"
@@ -126,8 +131,15 @@ final class SetupManager: ObservableObject {
         P12_PATH="\(AppConfig.p12Path)"
         P12_PASSWORD="\(AppConfig.p12Password)"
 
-        if ! /usr/bin/grep -Eq "^[[:space:]]*127[.]0[.]0[.]1[[:space:]]+([^#[:space:]]+[[:space:]]+)*${HOST_NAME}([[:space:]]|$)" /etc/hosts; then
-            /usr/bin/printf '\\n127.0.0.1 %s  %s\\n' "$HOST_NAME" "$HOST_MARKER" >> /etc/hosts
+        /usr/bin/sed -i '' '/# \(AppConfig.setupMarker)/d' /etc/hosts 2>/dev/null || true
+        MISSING_HOST=0
+        for HOST_NAME in $HOST_NAMES; do
+            if ! /usr/bin/grep -Eq "^[[:space:]]*127[.]0[.]0[.]1[[:space:]]+([^#[:space:]]+[[:space:]]+)*${HOST_NAME}([[:space:]]|$)" /etc/hosts; then
+                MISSING_HOST=1
+            fi
+        done
+        if [ "$MISSING_HOST" -eq 1 ]; then
+            /usr/bin/printf '\\n127.0.0.1 %s  %s\\n' "$HOST_NAMES" "$HOST_MARKER" >> /etc/hosts
         fi
 
         /bin/mkdir -p /etc/pf.anchors
@@ -160,9 +172,9 @@ final class SetupManager: ObservableObject {
         /sbin/pfctl -a "$PF_ANCHOR_NAME" -f "$PF_ANCHOR_FILE" 2>&1
 
         /bin/mkdir -p "$CERT_DIR"
-        if [ ! -f "$CERT_PATH" ] || [ ! -f "$P12_PATH" ]; then
+        if [ ! -f "$CERT_PATH" ] || [ ! -f "$P12_PATH" ] || ! /usr/bin/openssl x509 -in "$CERT_PATH" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -q "DNS:\(AppConfig.safariHostName)"; then
             SSL_CONFIG="$(/usr/bin/mktemp /tmp/golinks-ssl.XXXXXX)"
-            /usr/bin/printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=%s\\n[v3]\\nsubjectAltName=DNS:%s,IP:127.0.0.1\\nkeyUsage=keyEncipherment,dataEncipherment\\nextendedKeyUsage=serverAuth\\n' "$HOST_NAME" "$HOST_NAME" > "$SSL_CONFIG"
+            /usr/bin/printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=%s\\n[v3]\\nsubjectAltName=%s\\nkeyUsage=keyEncipherment,dataEncipherment\\nextendedKeyUsage=serverAuth\\n' "$PRIMARY_HOST" "$CERT_SUBJECT_ALT_NAMES" > "$SSL_CONFIG"
             /usr/bin/openssl req -x509 -newkey rsa:2048 \\
                 -keyout "$KEY_PATH" \\
                 -out "$CERT_PATH" \\

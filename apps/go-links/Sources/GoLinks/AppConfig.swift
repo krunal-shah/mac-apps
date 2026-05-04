@@ -5,6 +5,8 @@ enum AppConfig {
     static let appName = "Go Links"
     static let processName = "GoLinks"
     static let hostName = "go"
+    static let safariHostName = "go.localhost"
+    static let hostAliases = [hostName, safariHostName]
 
     static let httpPort: UInt16 = 9876
     static let httpsPort: UInt16 = 9877
@@ -24,6 +26,14 @@ enum AppConfig {
 
     static var httpURL: URL {
         URL(string: "http://\(hostName)/")!
+    }
+
+    static var hostsFileEntry: String {
+        hostAliases.joined(separator: " ")
+    }
+
+    static var certificateSubjectAltNames: String {
+        (hostAliases.map { "DNS:\($0)" } + ["IP:127.0.0.1"]).joined(separator: ",")
     }
 
     static var httpsNWPort: NWEndpoint.Port {

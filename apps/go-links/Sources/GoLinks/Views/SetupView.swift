@@ -40,7 +40,7 @@ struct SetupView: View {
                 VStack(spacing: 8) {
                     StatusRow(
                         title: "Hostname",
-                        value: "127.0.0.1 \(AppConfig.hostName)",
+                        value: "127.0.0.1 \(AppConfig.hostsFileEntry)",
                         isComplete: setup.hostsConfigured
                     )
                     StatusRow(
