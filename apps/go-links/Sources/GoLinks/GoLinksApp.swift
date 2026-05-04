@@ -35,6 +35,47 @@ final class SetupPanel {
     }
 }
 
+// MARK: - Link Editor Panel
+
+@MainActor
+final class LinkEditorPanel {
+    static let shared = LinkEditorPanel()
+    private var controller: NSWindowController?
+
+    private init() {}
+
+    func close() {
+        controller?.close()
+        controller = nil
+    }
+
+    func show(mode: LinkFormMode, store: GoLinkStore) {
+        close()
+
+        let root = AddEditLinkView(mode: mode) { [weak self] in
+            self?.close()
+        }
+        .environmentObject(store)
+
+        let hosting = NSHostingController(rootView: root)
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 260),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = mode.title
+        panel.contentViewController = hosting
+        panel.isReleasedWhenClosed = false
+        panel.center()
+
+        controller = NSWindowController(window: panel)
+        NSApp.activate(ignoringOtherApps: true)
+        controller?.showWindow(nil)
+        controller?.window?.makeKeyAndOrderFront(nil)
+    }
+}
+
 // MARK: - App Delegate
 
 final class AppDelegate: NSObject, NSApplicationDelegate {

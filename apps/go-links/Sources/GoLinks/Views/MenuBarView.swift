@@ -4,22 +4,7 @@ struct MenuBarView: View {
     @EnvironmentObject private var store: GoLinkStore
     @EnvironmentObject private var setup: SetupManager
 
-    @State private var activeSheet: ActiveSheet?
     @State private var searchText = ""
-
-    private enum ActiveSheet: Identifiable {
-        case add
-        case edit(GoLink)
-
-        var id: String {
-            switch self {
-            case .add:
-                return "add"
-            case .edit(let link):
-                return link.id.uuidString
-            }
-        }
-    }
 
     private var filteredLinks: [GoLink] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -40,20 +25,6 @@ struct MenuBarView: View {
             footer
         }
         .frame(width: 460, height: 540)
-        .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .add:
-                AddEditLinkView(mode: .add)
-                    .environmentObject(store)
-            case .edit(let link):
-                AddEditLinkView(mode: .edit(link))
-                    .environmentObject(store)
-            }
-        }
-        .onAppear {
-            setup.refresh()
-            setup.runDiagnostics()
-        }
     }
 
     private var header: some View {
@@ -77,7 +48,7 @@ struct MenuBarView: View {
             }
 
             iconButton("plus", help: "Add Link") {
-                activeSheet = .add
+                LinkEditorPanel.shared.show(mode: .add, store: store)
             }
         }
         .padding(.horizontal, 14)
@@ -126,7 +97,7 @@ struct MenuBarView: View {
                     ForEach(filteredLinks) { link in
                         GoLinkRow(
                             link: link,
-                            onEdit: { activeSheet = .edit(link) },
+                            onEdit: { LinkEditorPanel.shared.show(mode: .edit(link), store: store) },
                             onDelete: { store.delete(link) }
                         )
 
@@ -156,7 +127,7 @@ struct MenuBarView: View {
             }
 
             Button {
-                activeSheet = .add
+                LinkEditorPanel.shared.show(mode: .add, store: store)
             } label: {
                 Label("Add Link", systemImage: "plus")
             }
