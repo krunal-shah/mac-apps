@@ -109,15 +109,6 @@ struct GoLinkRouter {
             return base
         }
 
-        if !suffixPath.isEmpty {
-            var basePath = components.percentEncodedPath
-            if basePath.isEmpty { basePath = "/" }
-            if basePath.hasSuffix("/") {
-                basePath.removeLast()
-            }
-            components.percentEncodedPath = basePath + suffixPath
-        }
-
         appendRawQuery(query, to: &components)
 
         return components.url?.absoluteString ?? base

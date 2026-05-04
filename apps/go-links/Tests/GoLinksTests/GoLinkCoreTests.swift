@@ -29,7 +29,7 @@ final class GoLinkCoreTests: XCTestCase {
         XCTAssertThrowsError(try GoLinkInput.normalizedURL("www.google.com/search?q={term}"))
     }
 
-    func testRouterRedirectsAndPreservesPathAndQuery() {
+    func testRouterLeavesUntemplatedDestinationPathUnchanged() {
         let resolver = GoLinkResolver()
         let pasteResolver = PasteResolver()
         resolver.replace(with: [
@@ -41,7 +41,7 @@ final class GoLinkCoreTests: XCTestCase {
         let response = String(data: router.responseData(for: request, scheme: "http"), encoding: .utf8)
 
         XCTAssertTrue(response?.contains("HTTP/1.1 302 Found") == true)
-        XCTAssertTrue(response?.contains("Location: https://example.com/base/team%20page?tab=owned") == true)
+        XCTAssertTrue(response?.contains("Location: https://example.com/base?tab=owned") == true)
     }
 
     func testRouterResolvesLongestNestedShortcutPrefix() {
@@ -56,7 +56,7 @@ final class GoLinkCoreTests: XCTestCase {
         let response = String(data: router.responseData(for: request, scheme: "http"), encoding: .utf8)
 
         XCTAssertTrue(response?.contains("HTTP/1.1 302 Found") == true)
-        XCTAssertTrue(response?.contains("Location: https://example.com/base/ghi") == true)
+        XCTAssertTrue(response?.contains("Location: https://example.com/base") == true)
     }
 
     func testRouterUsesPathTemplateForRemainingPath() {
