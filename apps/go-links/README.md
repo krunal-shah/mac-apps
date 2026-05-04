@@ -40,6 +40,9 @@ cd mac-apps
 # Build and open the default app bundle:
 make open
 
+# Run tests:
+make test
+
 # Or install to /Applications:
 make install
 

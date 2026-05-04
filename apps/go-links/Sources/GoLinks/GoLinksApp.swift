@@ -39,14 +39,12 @@ final class SetupPanel {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // Set by GoLinksApp.init() before applicationDidFinishLaunching fires
-    static var store: GoLinkStore?
     static var server: HTTPServer?
     static var tlsServer: TLSServer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard let store = Self.store, let server = Self.server else { return }
-        server.start(store: store)
-        Self.tlsServer?.start(store: store)
+        Self.server?.start()
+        Self.tlsServer?.start()
         Task { @MainActor in await SetupManager.shared.reapplyPFIfNeeded() }
     }
 
@@ -69,9 +67,11 @@ struct GoLinksApp: App {
     private let tlsServer: TLSServer
 
     init() {
-        let store = GoLinkStore()
-        let server = HTTPServer(port: 9876)
-        let tlsServer = TLSServer()
+        let resolver = GoLinkResolver()
+        let store = GoLinkStore(resolver: resolver)
+        let router = GoLinkRouter(resolver: resolver)
+        let server = HTTPServer(router: router)
+        let tlsServer = TLSServer(router: router)
 
         _store = StateObject(wrappedValue: store)
         _setup = StateObject(wrappedValue: SetupManager.shared)
@@ -79,7 +79,6 @@ struct GoLinksApp: App {
         self.tlsServer = tlsServer
 
         // Share with delegate for lifecycle management
-        AppDelegate.store = store
         AppDelegate.server = server
         AppDelegate.tlsServer = tlsServer
     }
@@ -90,7 +89,7 @@ struct GoLinksApp: App {
                 .environmentObject(store)
                 .environmentObject(setup)
                 .onChange(of: setup.isRunningSetup) { isRunning in
-                    if !isRunning { tlsServer.start(store: store) }
+                    if !isRunning { tlsServer.start() }
                 }
         } label: {
             menuBarLabel
