@@ -30,9 +30,9 @@ enum LinkFormMode {
 
 struct AddEditLinkView: View {
     let mode: LinkFormMode
+    let onClose: () -> Void
 
     @EnvironmentObject private var store: GoLinkStore
-    @Environment(\.dismiss) private var dismiss
 
     @State private var shortName: String = ""
     @State private var destinationURL: String = ""
@@ -45,8 +45,9 @@ struct AddEditLinkView: View {
         case url
     }
 
-    init(mode: LinkFormMode) {
+    init(mode: LinkFormMode, onClose: @escaping () -> Void) {
         self.mode = mode
+        self.onClose = onClose
         if case .edit(let link) = mode {
             _shortName = State(initialValue: link.shortName)
             _destinationURL = State(initialValue: link.destinationURL)
@@ -127,7 +128,7 @@ struct AddEditLinkView: View {
         HStack {
             Spacer()
             Button("Cancel") {
-                dismiss()
+                onClose()
             }
             .keyboardShortcut(.escape, modifiers: [])
 
@@ -186,7 +187,7 @@ struct AddEditLinkView: View {
                 updated.destinationURL = destinationURL
                 try store.update(updated)
             }
-            dismiss()
+            onClose()
         } catch GoLinkValidationError.duplicateName {
             nameError = GoLinkValidationError.duplicateName.localizedDescription
         } catch {
