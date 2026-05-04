@@ -25,3 +25,16 @@ directory directly:
 cd apps/go-links
 make open
 ```
+
+## Releases
+
+Pushing a `go-links-v*` tag builds `GoLinks.app.zip` on GitHub Actions and
+attaches it to a GitHub Release:
+
+```bash
+git tag go-links-v1.0.0
+git push origin go-links-v1.0.0
+```
+
+You can also run the `Go Links Release` workflow manually in GitHub Actions and
+provide the release tag.

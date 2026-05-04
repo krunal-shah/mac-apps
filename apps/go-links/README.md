@@ -42,6 +42,9 @@ make open
 
 # Or install to /Applications:
 make install
+
+# Or create a distributable zip:
+make release-zip
 ```
 
 You can also run the same commands from the app directory:
@@ -49,6 +52,16 @@ You can also run the same commands from the app directory:
 ```bash
 cd apps/go-links
 make open
+```
+
+## GitHub Releases
+
+The repo includes a GitHub Actions workflow that builds this app and uploads
+`GoLinks.app.zip` to the Releases tab whenever a `go-links-v*` tag is pushed:
+
+```bash
+git tag go-links-v1.0.0
+git push origin go-links-v1.0.0
 ```
 
 ---

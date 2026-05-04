@@ -10,8 +10,9 @@ APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 BINARY      = $(BUILD_DIR)/release/$(APP_NAME)
 INFO_PLIST  = Resources/Info.plist
 INSTALL_DIR = /Applications
+ZIP_FILE    = $(BUILD_DIR)/$(APP_NAME).app.zip
 
-.PHONY: build app install clean run open
+.PHONY: build app install clean run open release-zip
 
 # ------------------------------------
 # 1. Compile with Swift Package Manager
@@ -55,7 +56,16 @@ open: app
 	open "$(APP_BUNDLE)"
 
 # ------------------------------------
-# 6. Clean
+# 6. Create a release zip
+# ------------------------------------
+release-zip: app
+	@echo "→ Creating $(ZIP_FILE) …"
+	@rm -f "$(ZIP_FILE)"
+	@ditto -c -k --sequesterRsrc --keepParent "$(APP_BUNDLE)" "$(ZIP_FILE)"
+	@echo "✓ $(ZIP_FILE) ready"
+
+# ------------------------------------
+# 7. Clean
 # ------------------------------------
 clean:
 	rm -rf .build
