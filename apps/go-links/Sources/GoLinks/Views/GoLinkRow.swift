@@ -31,24 +31,23 @@ struct GoLinkRow: View {
             Spacer(minLength: 10)
 
             HStack(spacing: 4) {
-                iconButton("arrow.up.right.square", help: "Open") {
+                ToolIconButton(systemName: "arrow.up.right.square", help: "Open", size: 23) {
                     if let url = URL(string: "http://\(AppConfig.hostName)/\(link.shortName)") {
                         NSWorkspace.shared.open(url)
                     }
                 }
 
-                iconButton(copied ? "checkmark" : "doc.on.doc", help: "Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString("http://\(AppConfig.hostName)/\(link.shortName)", forType: .string)
+                ToolIconButton(systemName: copied ? "checkmark" : "doc.on.doc", help: "Copy", size: 23) {
+                    Clipboard.copy("http://\(AppConfig.hostName)/\(link.shortName)")
                     copied = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
                         copied = false
                     }
                 }
 
-                iconButton("pencil", help: "Edit", action: onEdit)
+                ToolIconButton(systemName: "pencil", help: "Edit", size: 23, action: onEdit)
 
-                iconButton("trash", help: "Delete", tint: .red) {
+                ToolIconButton(systemName: "trash", help: "Delete", tint: .red, size: 23) {
                     confirmingDelete = true
                 }
             }
@@ -62,22 +61,4 @@ struct GoLinkRow: View {
         }
     }
 
-    private func iconButton(
-        _ systemName: String,
-        help: String,
-        tint: Color = .secondary,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(tint)
-                .frame(width: 23, height: 23)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .help(help)
-    }
 }

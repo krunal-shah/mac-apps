@@ -37,6 +37,7 @@ enum GoLinkValidationError: LocalizedError, Equatable {
     case emptyName
     case invalidName
     case duplicateName
+    case reservedName
     case emptyURL
     case invalidURL
     case unsupportedURLScheme
@@ -49,6 +50,8 @@ enum GoLinkValidationError: LocalizedError, Equatable {
             return "Use 1-64 lowercase letters, numbers, hyphens, or underscores. Start with a letter or number."
         case .duplicateName:
             return "That short name already exists."
+        case .reservedName:
+            return "That short name is reserved for an app tool."
         case .emptyURL:
             return "Enter a destination URL."
         case .invalidURL:
@@ -80,6 +83,9 @@ enum GoLinkInput {
         let pattern = #"^[a-z0-9][a-z0-9_-]{0,63}$"#
         guard value.range(of: pattern, options: .regularExpression) != nil else {
             throw GoLinkValidationError.invalidName
+        }
+        guard !AppConfig.reservedShortNames.contains(value) else {
+            throw GoLinkValidationError.reservedName
         }
 
         return value
