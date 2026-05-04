@@ -1,40 +1,6 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Setup Panel
-
-@MainActor
-final class SetupPanel {
-    static let shared = SetupPanel()
-    private var controller: NSWindowController?
-
-    private init() {}
-
-    func close() { controller?.close() }
-
-    func show() {
-        if controller == nil {
-            let root = SetupView().environmentObject(SetupManager.shared)
-            let hosting = NSHostingController(rootView: root)
-            let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
-                styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel],
-                backing: .buffered,
-                defer: false
-            )
-            panel.title = "System Setup"
-            panel.contentViewController = hosting
-            panel.isReleasedWhenClosed = false
-            panel.isFloatingPanel = false
-            panel.center()
-            controller = NSWindowController(window: panel)
-        }
-        NSApp.activate(ignoringOtherApps: true)
-        controller?.showWindow(nil)
-        controller?.window?.makeKeyAndOrderFront(nil)
-    }
-}
-
 // MARK: - App Delegate
 
 @MainActor

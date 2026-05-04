@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 
 enum AppTool: String, CaseIterable, Identifiable {
-    case links
     case pastes
+    case links
 
     var id: String { rawValue }
 
@@ -26,32 +26,47 @@ enum AppTool: String, CaseIterable, Identifiable {
     }
 }
 
+private enum MenuScreen: Equatable {
+    case tool(AppTool)
+    case setup
+}
+
 struct MenuBarView: View {
     @EnvironmentObject private var links: GoLinkStore
     @EnvironmentObject private var pastes: PasteStore
 
-    @State private var selectedTool: AppTool = .links
+    @State private var selectedTool: AppTool = .pastes
+    @State private var screen: MenuScreen = .tool(.pastes)
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            toolSwitcher
-            Divider()
+            if screen != .setup {
+                toolSwitcher
+                Divider()
+            }
             toolContent
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 560, height: 660)
+        .background(Color(NSColor.windowBackgroundColor))
     }
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: selectedTool.icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.accentColor)
-                .frame(width: 26, height: 26)
+            if screen == .setup {
+                ToolIconButton(systemName: "chevron.left", help: "Back") {
+                    screen = .tool(selectedTool)
+                }
+            } else {
+                Image(systemName: selectedTool.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.accentColor)
+                    .frame(width: 26, height: 26)
+            }
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(AppConfig.suiteName)
+                Text(headerTitle)
                     .font(.headline)
                 Text(headerSubtitle)
                     .font(.caption)
@@ -60,8 +75,10 @@ struct MenuBarView: View {
 
             Spacer()
 
-            ToolIconButton(systemName: "gearshape", help: "Setup") {
-                SetupPanel.shared.show()
+            if screen != .setup {
+                ToolIconButton(systemName: "gearshape", help: "Settings") {
+                    screen = .setup
+                }
             }
 
             ToolIconButton(systemName: "power", help: "Quit") {
@@ -73,12 +90,26 @@ struct MenuBarView: View {
         .background(Color(NSColor.windowBackgroundColor))
     }
 
+    private var headerTitle: String {
+        switch screen {
+        case .setup:
+            return "Settings"
+        case .tool:
+            return AppConfig.suiteName
+        }
+    }
+
     private var headerSubtitle: String {
-        switch selectedTool {
-        case .links:
-            return "\(links.links.count) link\(links.links.count == 1 ? "" : "s")"
-        case .pastes:
-            return "\(pastes.pastes.count) paste\(pastes.pastes.count == 1 ? "" : "s")"
+        switch screen {
+        case .setup:
+            return "System setup and diagnostics"
+        case .tool(let tool):
+            switch tool {
+            case .links:
+                return "\(links.links.count) link\(links.links.count == 1 ? "" : "s")"
+            case .pastes:
+                return "\(pastes.pastes.count) paste\(pastes.pastes.count == 1 ? "" : "s")"
+            }
         }
     }
 
@@ -91,6 +122,9 @@ struct MenuBarView: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+        .onChange(of: selectedTool) { tool in
+            screen = .tool(tool)
+        }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(Color(NSColor.controlBackgroundColor))
@@ -98,11 +132,18 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private var toolContent: some View {
-        switch selectedTool {
-        case .links:
-            LinksToolView()
-        case .pastes:
-            PastesToolView()
+        switch screen {
+        case .setup:
+            SetupView {
+                screen = .tool(selectedTool)
+            }
+        case .tool(let tool):
+            switch tool {
+            case .links:
+                LinksToolView()
+            case .pastes:
+                PastesToolView()
+            }
         }
     }
 }

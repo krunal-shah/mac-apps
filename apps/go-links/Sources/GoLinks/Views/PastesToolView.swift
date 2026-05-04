@@ -8,6 +8,10 @@ struct PastesToolView: View {
 
     @State private var screen: Screen = .list
     @State private var searchText = ""
+    @State private var selectedPasteID: String?
+    @State private var isPreviewing = false
+    @State private var copiedPasteID: String?
+    @State private var focusToken = 0
 
     private enum Screen: Equatable {
         case list
@@ -29,11 +33,30 @@ struct PastesToolView: View {
         }
     }
 
+    private var filteredPasteIDs: [String] {
+        filteredPastes.map(\.id)
+    }
+
+    private var selectedPaste: PasteItem? {
+        filteredPastes.first { $0.id == selectedPasteID }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             toolBar
             Divider()
             mainContent
+        }
+        .background(
+            KeyboardCaptureView(focusToken: focusToken, onKeyDown: handleKeyDown)
+                .frame(width: 0, height: 0)
+        )
+        .onAppear {
+            normalizeSelection()
+            focusToken += 1
+        }
+        .onChange(of: filteredPasteIDs) { _ in
+            normalizeSelection()
         }
     }
 
@@ -73,9 +96,9 @@ struct PastesToolView: View {
     private var subtitleText: String {
         switch screen {
         case .list:
-            return "Clipboard history on \(AppConfig.hostName)/\(AppConfig.pastePath)"
+            return "Clipboard history"
         case .edit(let paste):
-            return "\(AppConfig.hostName)/\(AppConfig.pastePath)/\(paste.id)"
+            return paste.title
         }
     }
 
@@ -109,19 +132,30 @@ struct PastesToolView: View {
         } else if filteredPastes.isEmpty {
             EmptyToolState(icon: "magnifyingglass", title: "No Matches", detail: "No pastes match your search.")
         } else {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(filteredPastes) { paste in
-                        PasteRow(
-                            paste: paste,
-                            onEdit: { screen = .edit(paste) },
-                            onDelete: { store.delete(paste) }
-                        )
-
-                        if paste.id != filteredPastes.last?.id {
-                            Divider()
-                                .padding(.leading, 14)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(filteredPastes) { paste in
+                            PasteRow(
+                                paste: paste,
+                                isSelected: paste.id == selectedPasteID,
+                                isPreviewing: isPreviewing && paste.id == selectedPasteID,
+                                isCopied: copiedPasteID == paste.id,
+                                onSelect: { select(paste) },
+                                onPreview: { togglePreview(for: paste) },
+                                onCopy: { copy(paste) },
+                                onEdit: { screen = .edit(paste) },
+                                onDelete: { delete(paste) }
+                            )
+                            .id(paste.id)
                         }
+                    }
+                    .padding(10)
+                }
+                .onChange(of: selectedPasteID) { id in
+                    guard let id else { return }
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        proxy.scrollTo(id, anchor: .center)
                     }
                 }
             }
@@ -147,20 +181,106 @@ struct PastesToolView: View {
 
             Spacer()
 
-            Button {
-                if let url = URL(string: "https://\(AppConfig.hostName)/\(AppConfig.pastePath)") {
-                    NSWorkspace.shared.open(url)
-                }
-            } label: {
-                Label("Open", systemImage: "safari")
-            }
-            .font(.caption)
-            .buttonStyle(.plain)
-            .disabled(!setup.hostsConfigured || !setup.pfActiveInKernel)
+            Text("\(filteredPastes.count) shown")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .monospacedDigit()
         }
         .padding(.horizontal, 14)
         .frame(height: 38)
         .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    private func handleKeyDown(_ event: NSEvent) -> Bool {
+        guard screen == .list else { return false }
+
+        switch event.keyCode {
+        case 125:
+            moveSelection(by: 1)
+            return true
+        case 126:
+            moveSelection(by: -1)
+            return true
+        case 49:
+            togglePreviewForSelection()
+            return true
+        case 36, 76:
+            copySelectedPaste()
+            return true
+        case 53:
+            if isPreviewing {
+                isPreviewing = false
+                return true
+            }
+            return false
+        default:
+            return false
+        }
+    }
+
+    private func normalizeSelection() {
+        guard !filteredPastes.isEmpty else {
+            selectedPasteID = nil
+            isPreviewing = false
+            return
+        }
+
+        if let selectedPasteID, filteredPastes.contains(where: { $0.id == selectedPasteID }) {
+            return
+        }
+
+        selectedPasteID = filteredPastes.first?.id
+    }
+
+    private func select(_ paste: PasteItem) {
+        selectedPasteID = paste.id
+        focusToken += 1
+    }
+
+    private func togglePreview(for paste: PasteItem) {
+        selectedPasteID = paste.id
+        isPreviewing.toggle()
+        focusToken += 1
+    }
+
+    private func togglePreviewForSelection() {
+        normalizeSelection()
+        guard selectedPaste != nil else { return }
+        isPreviewing.toggle()
+    }
+
+    private func moveSelection(by offset: Int) {
+        guard !filteredPastes.isEmpty else { return }
+
+        let currentIndex = selectedPasteID.flatMap { id in
+            filteredPastes.firstIndex { $0.id == id }
+        } ?? 0
+        let nextIndex = min(max(currentIndex + offset, 0), filteredPastes.count - 1)
+        selectedPasteID = filteredPastes[nextIndex].id
+    }
+
+    private func copySelectedPaste() {
+        normalizeSelection()
+        guard let selectedPaste else { return }
+        copy(selectedPaste)
+    }
+
+    private func copy(_ paste: PasteItem) {
+        Clipboard.copy(paste.body)
+        copiedPasteID = paste.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+            if copiedPasteID == paste.id {
+                copiedPasteID = nil
+            }
+        }
+    }
+
+    private func delete(_ paste: PasteItem) {
+        store.delete(paste)
+        if selectedPasteID == paste.id {
+            selectedPasteID = nil
+            normalizeSelection()
+        }
     }
 
     private var statusText: String {

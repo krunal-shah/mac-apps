@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ToolIconButton: View {
     let systemName: String
@@ -70,5 +71,40 @@ struct EmptyToolState: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
+    }
+}
+
+struct KeyboardCaptureView: NSViewRepresentable {
+    let focusToken: Int
+    let onKeyDown: (NSEvent) -> Bool
+
+    func makeNSView(context: Context) -> KeyCaptureNSView {
+        let view = KeyCaptureNSView()
+        view.onKeyDown = onKeyDown
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyCaptureNSView, context: Context) {
+        nsView.onKeyDown = onKeyDown
+
+        guard nsView.focusToken != focusToken else { return }
+        nsView.focusToken = focusToken
+        DispatchQueue.main.async {
+            nsView.window?.makeFirstResponder(nsView)
+        }
+    }
+}
+
+final class KeyCaptureNSView: NSView {
+    var focusToken = 0
+    var onKeyDown: ((NSEvent) -> Bool)?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if onKeyDown?(event) == true {
+            return
+        }
+        super.keyDown(with: event)
     }
 }
