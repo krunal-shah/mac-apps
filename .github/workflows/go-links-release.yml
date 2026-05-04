@@ -1,0 +1,49 @@
+name: Go Links Release
+
+on:
+  push:
+    tags:
+      - "go-links-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create or update, for example go-links-v1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build Go Links app
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build release zip
+        run: make release-zip
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoLinks.app
+          path: apps/go-links/.build/GoLinks.app.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          ZIP_PATH: apps/go-links/.build/GoLinks.app.zip
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$ZIP_PATH" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$ZIP_PATH" \
+              --title "$RELEASE_TAG" \
+              --notes "Go Links macOS app bundle." \
+              --target "$GITHUB_SHA"
+          fi
