@@ -77,7 +77,7 @@ struct AddEditLinkView: View {
                     .foregroundColor(.secondary)
                     .frame(width: 44)
 
-                TextField("docs", text: $shortName)
+                TextField("docs/search", text: $shortName)
                     .font(.system(.body, design: .monospaced))
                     .textFieldStyle(.plain)
                     .focused($focusedField, equals: .name)
@@ -94,8 +94,9 @@ struct AddEditLinkView: View {
             }
 
             fieldLabel("Destination", systemImage: "globe")
+                .help("Use {path} to insert the remaining path after the shortcut.")
 
-            TextField("https://example.com", text: $destinationURL)
+            TextField("https://google.com/search?q={path}", text: $destinationURL)
                 .textFieldStyle(.plain)
                 .focused($focusedField, equals: .url)
                 .onChange(of: destinationURL) { _ in urlError = nil }

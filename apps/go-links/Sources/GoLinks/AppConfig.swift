@@ -7,6 +7,7 @@ enum AppConfig {
     static let processName = "GoLinks"
     static let hostName = "go"
     static let pastePath = "paste"
+    static let pathPlaceholder = "{path}"
     static let reservedShortNames = Set([pastePath])
 
     static let httpPort: UInt16 = 9876
