@@ -6,22 +6,32 @@ enum LinkFormMode {
 
     var title: String {
         switch self {
-        case .add:  return "Add Go Link"
-        case .edit: return "Edit Go Link"
+        case .add:
+            return "Add Link"
+        case .edit:
+            return "Edit Link"
         }
     }
 
     var submitLabel: String {
         switch self {
-        case .add:  return "Add"
-        case .edit: return "Save"
+        case .add:
+            return "Add"
+        case .edit:
+            return "Save"
         }
+    }
+
+    var linkID: UUID? {
+        if case .edit(let link) = self { return link.id }
+        return nil
     }
 }
 
 struct AddEditLinkView: View {
     let mode: LinkFormMode
-    @EnvironmentObject var store: GoLinkStore
+
+    @EnvironmentObject private var store: GoLinkStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var shortName: String = ""
@@ -30,7 +40,10 @@ struct AddEditLinkView: View {
     @State private var urlError: String?
     @FocusState private var focusedField: Field?
 
-    private enum Field { case name, url }
+    private enum Field {
+        case name
+        case url
+    }
 
     init(mode: LinkFormMode) {
         self.mode = mode
@@ -40,165 +53,144 @@ struct AddEditLinkView: View {
         }
     }
 
-    var existingID: UUID? {
-        if case .edit(let link) = mode { return link.id }
-        return nil
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Title bar
-            HStack {
-                Text(mode.title)
-                    .font(.headline)
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.escape, modifiers: [])
-            }
-            .padding(16)
-
+        VStack(spacing: 0) {
+            header
             Divider()
-
-            // Form
-            VStack(alignment: .leading, spacing: 16) {
-                // Short name
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Short name", systemImage: "link")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    HStack(spacing: 0) {
-                        Text("go/")
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .foregroundColor(.secondary)
-                            .font(.system(.body, design: .monospaced))
-                            .overlay(
-                                Rectangle()
-                                    .frame(width: 1)
-                                    .foregroundColor(Color(NSColor.separatorColor)),
-                                alignment: .trailing
-                            )
-
-                        TextField("mylink", text: $shortName)
-                            .textFieldStyle(.plain)
-                            .font(.system(.body, design: .monospaced))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .focused($focusedField, equals: .name)
-                            .onChange(of: shortName) { _ in nameError = nil }
-                            .onSubmit { focusedField = .url }
-                    }
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(nameError != nil ? Color.red : Color(NSColor.separatorColor),
-                                    lineWidth: 1)
-                    )
-                    .background(Color(NSColor.textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                    if let err = nameError {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    } else {
-                        Text("Letters, numbers, hyphens only. No spaces.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Destination URL
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Destination URL", systemImage: "globe")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    TextField("https://example.com", text: $destinationURL)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(urlError != nil ? Color.red : Color(NSColor.separatorColor),
-                                        lineWidth: 1)
-                        )
-                        .background(Color(NSColor.textBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .focused($focusedField, equals: .url)
-                        .onChange(of: destinationURL) { _ in urlError = nil }
-                        .onSubmit { submit() }
-
-                    if let err = urlError {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                }
-            }
-            .padding(16)
-
+            form
             Divider()
-
-            // Actions
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.escape, modifiers: [])
-                Button(mode.submitLabel) { submit() }
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .buttonStyle(.borderedProminent)
-            }
-            .padding(16)
+            actions
         }
-        .frame(width: 360)
-        .onAppear { focusedField = .name }
+        .frame(width: 380)
+        .onAppear {
+            focusedField = .name
+        }
     }
 
-    // MARK: - Validation & Submit
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "link.badge.plus")
+                .foregroundColor(.accentColor)
+            Text(mode.title)
+                .font(.headline)
+            Spacer()
+        }
+        .padding(16)
+    }
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            fieldLabel("Shortcut", systemImage: "textformat")
+
+            HStack(spacing: 0) {
+                Text("\(AppConfig.hostName)/")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .frame(width: 44)
+
+                TextField("docs", text: $shortName)
+                    .font(.system(.body, design: .monospaced))
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .name)
+                    .onChange(of: shortName) { _ in nameError = nil }
+                    .onSubmit { focusedField = .url }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+            .background(Color(NSColor.textBackgroundColor))
+            .overlay(inputBorder(hasError: nameError != nil))
+
+            if let nameError {
+                errorText(nameError)
+            }
+
+            fieldLabel("Destination", systemImage: "globe")
+
+            TextField("https://example.com", text: $destinationURL)
+                .textFieldStyle(.plain)
+                .focused($focusedField, equals: .url)
+                .onChange(of: destinationURL) { _ in urlError = nil }
+                .onSubmit { submit() }
+                .padding(.horizontal, 10)
+                .frame(height: 34)
+                .background(Color(NSColor.textBackgroundColor))
+                .overlay(inputBorder(hasError: urlError != nil))
+
+            if let urlError {
+                errorText(urlError)
+            }
+        }
+        .padding(16)
+    }
+
+    private var actions: some View {
+        HStack {
+            Spacer()
+            Button("Cancel") {
+                dismiss()
+            }
+            .keyboardShortcut(.escape, modifiers: [])
+
+            Button(mode.submitLabel) {
+                submit()
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(16)
+    }
+
+    private func fieldLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption)
+            .foregroundColor(.secondary)
+    }
+
+    private func inputBorder(hasError: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 6)
+            .stroke(hasError ? Color.red : Color(NSColor.separatorColor), lineWidth: 1)
+    }
+
+    private func errorText(_ message: String) -> some View {
+        Text(message)
+            .font(.caption)
+            .foregroundColor(.red)
+            .fixedSize(horizontal: false, vertical: true)
+    }
 
     private func submit() {
-        var valid = true
+        nameError = nil
+        urlError = nil
 
-        // Validate name
-        let name = shortName.lowercased().trimmingCharacters(in: .whitespaces)
-        if name.isEmpty {
-            nameError = "Short name is required."
-            valid = false
-        } else if !name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }) {
-            nameError = "Only letters, numbers, hyphens, and underscores are allowed."
-            valid = false
-        } else if store.isNameTaken(name, excluding: existingID) {
-            nameError = "This short name is already in use."
-            valid = false
+        do {
+            _ = try GoLinkInput.normalizedName(shortName)
+        } catch {
+            nameError = error.localizedDescription
         }
 
-        // Validate URL
-        let rawURL = destinationURL.trimmingCharacters(in: .whitespaces)
-        if rawURL.isEmpty {
-            urlError = "Destination URL is required."
-            valid = false
-        } else {
-            let withScheme = rawURL.hasPrefix("http://") || rawURL.hasPrefix("https://")
-                ? rawURL : "https://" + rawURL
-            if URL(string: withScheme) == nil {
-                urlError = "Please enter a valid URL."
-                valid = false
+        do {
+            _ = try GoLinkInput.normalizedURL(destinationURL)
+        } catch {
+            urlError = error.localizedDescription
+        }
+
+        guard nameError == nil, urlError == nil else { return }
+
+        do {
+            switch mode {
+            case .add:
+                try store.add(shortName: shortName, destinationURL: destinationURL)
+            case .edit(let original):
+                var updated = original
+                updated.shortName = shortName
+                updated.destinationURL = destinationURL
+                try store.update(updated)
             }
+            dismiss()
+        } catch GoLinkValidationError.duplicateName {
+            nameError = GoLinkValidationError.duplicateName.localizedDescription
+        } catch {
+            urlError = error.localizedDescription
         }
-
-        guard valid else { return }
-
-        switch mode {
-        case .add:
-            store.add(shortName: name, destinationURL: rawURL)
-        case .edit(let original):
-            var updated = original
-            updated.shortName = name
-            updated.destinationURL = rawURL
-            store.update(updated)
-        }
-        dismiss()
     }
 }

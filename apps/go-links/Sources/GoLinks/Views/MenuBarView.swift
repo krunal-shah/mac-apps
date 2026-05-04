@@ -1,18 +1,32 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @EnvironmentObject var store: GoLinkStore
-    @EnvironmentObject var setup: SetupManager
+    @EnvironmentObject private var store: GoLinkStore
+    @EnvironmentObject private var setup: SetupManager
 
-    @State private var showingAdd = false
+    @State private var activeSheet: ActiveSheet?
     @State private var searchText = ""
 
-    var filteredLinks: [GoLink] {
-        if searchText.isEmpty { return store.links.sorted { $0.shortName < $1.shortName } }
-        let q = searchText.lowercased()
-        return store.links
-            .filter { $0.shortName.contains(q) || $0.destinationURL.lowercased().contains(q) }
-            .sorted { $0.shortName < $1.shortName }
+    private enum ActiveSheet: Identifiable {
+        case add
+        case edit(GoLink)
+
+        var id: String {
+            switch self {
+            case .add:
+                return "add"
+            case .edit(let link):
+                return link.id.uuidString
+            }
+        }
+    }
+
+    private var filteredLinks: [GoLink] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return store.links }
+        return store.links.filter {
+            $0.shortName.contains(query) || $0.destinationURL.lowercased().contains(query)
+        }
     }
 
     var body: some View {
@@ -21,48 +35,65 @@ struct MenuBarView: View {
             Divider()
             searchBar
             Divider()
-            linkContent
+            content
             Divider()
             footer
         }
-        .frame(width: 420, height: 520)
-        .sheet(isPresented: $showingAdd) {
-            AddEditLinkView(mode: .add)
-                .environmentObject(store)
+        .frame(width: 460, height: 540)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .add:
+                AddEditLinkView(mode: .add)
+                    .environmentObject(store)
+            case .edit(let link):
+                AddEditLinkView(mode: .edit(link))
+                    .environmentObject(store)
+            }
+        }
+        .onAppear {
+            setup.refresh()
+            setup.runDiagnostics()
         }
     }
 
-    // MARK: - Subviews
-
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "arrow.triangle.branch")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.accentColor)
-            Text("Go Links")
-                .font(.headline)
-            Spacer()
-            Button {
-                showingAdd = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(AppConfig.appName)
+                    .font(.headline)
+                Text("\(store.links.count) link\(store.links.count == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-            .buttonStyle(.plain)
-            .help("Add a new go link")
+
+            Spacer()
+
+            iconButton("gearshape", help: "Setup") {
+                SetupPanel.shared.show()
+            }
+
+            iconButton("plus", help: "Add Link") {
+                activeSheet = .add
+            }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.vertical, 12)
     }
 
     private var searchBar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
                 .font(.system(size: 12))
-            TextField("Search go links…", text: $searchText)
+                .foregroundColor(.secondary)
+
+            TextField("Search", text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
+
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -71,121 +102,150 @@ struct MenuBarView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Clear Search")
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .frame(height: 36)
         .background(Color(NSColor.controlBackgroundColor))
     }
 
     @ViewBuilder
-    private var linkContent: some View {
+    private var content: some View {
         if store.links.isEmpty {
             emptyState
         } else if filteredLinks.isEmpty {
-            noResultsState
+            unavailableState(
+                icon: "magnifyingglass",
+                title: "No Matches",
+                detail: "No links match your search."
+            )
         } else {
-            List {
-                ForEach(filteredLinks) { link in
-                    GoLinkRow(link: link)
-                        .environmentObject(store)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                }
-                .onDelete { offsets in
-                    // Map filtered offsets back to store
-                    let ids = offsets.map { filteredLinks[$0].id }
-                    ids.forEach { id in
-                        if let link = store.links.first(where: { $0.id == id }) {
-                            store.delete(link)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredLinks) { link in
+                        GoLinkRow(
+                            link: link,
+                            onEdit: { activeSheet = .edit(link) },
+                            onDelete: { store.delete(link) }
+                        )
+
+                        if link.id != filteredLinks.last?.id {
+                            Divider()
+                                .padding(.leading, 14)
                         }
                     }
                 }
             }
-            .listStyle(.plain)
+            .background(Color(NSColor.textBackgroundColor))
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Image(systemName: "link.badge.plus")
-                .font(.system(size: 36))
+                .font(.system(size: 34, weight: .regular))
                 .foregroundColor(.secondary)
-            Text("No go links yet")
-                .font(.headline)
-            Text("Tap + to add your first go link.\nThen type **go/linkname** in any browser.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+
+            VStack(spacing: 4) {
+                Text("No Links")
+                    .font(.headline)
+                Text("Add your first shortcut.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            Button {
+                activeSheet = .add
+            } label: {
+                Label("Add Link", systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
         }
-        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
     }
 
-    private var noResultsState: some View {
+    private func unavailableState(icon: String, title: String, detail: String) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
+            Image(systemName: icon)
                 .font(.system(size: 28))
                 .foregroundColor(.secondary)
-            Text("No results for \"\(searchText)\"")
+            Text(title)
+                .font(.headline)
+            Text(detail)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
     }
 
     private var footer: some View {
-        VStack(spacing: 0) {
-            // Port conflict warning
-            if let conflict = setup.diagnostics?.port80Process,
-               conflict != "GoLinks" {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                        .font(.caption2)
-                    Text("Port 80 in use by \"\(conflict)\" – go links won't work until it's stopped.")
-                        .font(.caption2)
-                        .foregroundColor(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
-                .background(Color.orange.opacity(0.1))
+        HStack(spacing: 8) {
+            StatusDot(color: setup.hostsConfigured && setup.pfActiveInKernel ? .green : .orange)
 
-                Divider()
+            Text(statusText)
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Button {
+                NSWorkspace.shared.open(AppConfig.httpURL)
+            } label: {
+                Label("Open", systemImage: "safari")
             }
+            .font(.caption)
+            .buttonStyle(.plain)
+            .disabled(!setup.hostsConfigured || !setup.pfActiveInKernel)
 
-            HStack(spacing: 6) {
-                let fullyActive = setup.hostsConfigured && setup.pfActiveInKernel
-                Circle()
-                    .fill(fullyActive ? Color.green : Color.orange)
-                    .frame(width: 7, height: 7)
-                Text(fullyActive
-                     ? "Active – \(store.links.count) link\(store.links.count == 1 ? "" : "s")"
-                     : "Setup required")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            Text("|")
+                .font(.caption)
+                .foregroundColor(.secondary.opacity(0.7))
 
-                Spacer()
-
-                Button("Setup") { SetupPanel.shared.show() }
-                    .font(.caption)
-                    .buttonStyle(.plain)
-                    .foregroundColor(.accentColor)
-
-                Text("·").foregroundColor(.secondary).font(.caption)
-
-                Button("Quit") { NSApplication.shared.terminate(nil) }
-                    .font(.caption)
-                    .buttonStyle(.plain)
-                    .foregroundColor(.secondary)
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .font(.caption)
+            .buttonStyle(.plain)
+            .foregroundColor(.secondary)
         }
-        .onAppear {
-            setup.refresh()
-            setup.runDiagnostics()
+        .padding(.horizontal, 14)
+        .frame(height: 38)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    private var statusText: String {
+        if setup.hostsConfigured && setup.pfActiveInKernel {
+            return "Ready"
         }
+        if setup.hostsConfigured && setup.pfConfigured {
+            return "Setup needs refresh"
+        }
+        return "Setup required"
+    }
+
+    private func iconButton(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .help(help)
+    }
+}
+
+private struct StatusDot: View {
+    let color: Color
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 7, height: 7)
     }
 }

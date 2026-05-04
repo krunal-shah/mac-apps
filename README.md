@@ -14,6 +14,7 @@ Run commands from the repo root to work with the default app:
 
 ```bash
 make build
+make test
 make open
 make install
 ```
