@@ -24,7 +24,8 @@ go/paste/abc123/raw → raw snippet text
 - **Nested shortcuts** – exact paths and longest-prefix matching (`go/team/wiki`)
 - **Path templates** – use `{path}` when a shortcut should consume the remaining path (`go/search/foo` → `...?q=foo`)
 - **Pastebin** – automatically saves copied text snippets; edit, search, open, and copy them
-- **Clean UI** – tool switcher, inline forms, search/filter, copy actions
+- **Keyboard-first paste history** – opens on pastes; arrow through items, preview, and copy from the menu
+- **Clean UI** – tool switcher, embedded settings, inline forms, search/filter, copy actions
 - **Persistent** – links and pastes stored in `UserDefaults`; survive reboots
 - **Index pages** – browse links at `http://go/` and pastes at `https://go/paste`
 

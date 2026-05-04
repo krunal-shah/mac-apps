@@ -1,35 +1,24 @@
 import SwiftUI
 
 struct SetupView: View {
+    let onClose: () -> Void
+
     @EnvironmentObject private var setup: SetupManager
+
+    init(onClose: @escaping () -> Void = {}) {
+        self.onClose = onClose
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
             content
             Divider()
             actions
         }
-        .frame(width: 460, height: 560)
         .onAppear {
             setup.refresh()
             setup.runDiagnostics()
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "gearshape.2")
-                .foregroundColor(.accentColor)
-            Text("System Setup")
-                .font(.headline)
-            Spacer()
-            Button("Done") {
-                SetupPanel.shared.close()
-            }
-        }
-        .padding(16)
     }
 
     private var content: some View {
@@ -117,6 +106,11 @@ struct SetupView: View {
             }
 
             Spacer()
+
+            Button("Done") {
+                onClose()
+            }
+            .keyboardShortcut(.escape, modifiers: [])
 
             Button {
                 Task { await setup.runSetup() }
