@@ -1,10 +1,12 @@
 import Foundation
 
 struct GoLinkRouter {
-    private let resolver: GoLinkResolver
+    private let linkResolver: GoLinkResolver
+    private let pasteResolver: PasteResolver
 
-    init(resolver: GoLinkResolver) {
-        self.resolver = resolver
+    init(linkResolver: GoLinkResolver, pasteResolver: PasteResolver) {
+        self.linkResolver = linkResolver
+        self.pasteResolver = pasteResolver
     }
 
     func responseData(for requestData: Data, scheme: String) -> Data {
@@ -23,8 +25,12 @@ struct GoLinkRouter {
         switch route {
         case .index:
             response = indexResponse(scheme: scheme)
+        case .pasteIndex:
+            response = pasteIndexResponse(scheme: scheme)
+        case .paste(let id, let raw):
+            response = pasteResponse(id: id, raw: raw, scheme: scheme)
         case .lookup(let shortName, let suffixPath, let query):
-            if let destination = resolver.destination(for: shortName) {
+            if let destination = linkResolver.destination(for: shortName) {
                 response = .redirect(to: destinationURL(base: destination, suffixPath: suffixPath, query: query))
             } else {
                 response = missingResponse(shortName: shortName, scheme: scheme)
@@ -38,6 +44,8 @@ struct GoLinkRouter {
 
     private enum Route {
         case index
+        case pasteIndex
+        case paste(id: String, raw: Bool)
         case lookup(shortName: String, suffixPath: String, query: String?)
         case invalid
     }
@@ -62,6 +70,15 @@ struct GoLinkRouter {
 
         let decodedName = String(rawShortName).removingPercentEncoding ?? String(rawShortName)
         let suffixPath = pathParts.count > 1 ? "/" + String(pathParts[1]) : ""
+
+        if decodedName == AppConfig.pastePath {
+            guard pathParts.count > 1 else { return .pasteIndex }
+            let pasteParts = String(pathParts[1]).split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+            guard let rawID = pasteParts.first, !rawID.isEmpty else { return .pasteIndex }
+            let id = (String(rawID).removingPercentEncoding ?? String(rawID)).lowercased()
+            let raw = pasteParts.count > 1 && pasteParts[1] == "raw"
+            return .paste(id: id, raw: raw)
+        }
 
         return .lookup(shortName: decodedName, suffixPath: suffixPath, query: query)
     }
@@ -104,7 +121,8 @@ struct GoLinkRouter {
     }
 
     private func indexResponse(scheme: String) -> HTTPResponse {
-        let links = resolver.snapshot()
+        let links = linkResolver.snapshot()
+        let pastes = pasteResolver.snapshot()
         let rows = links.map { link in
             """
             <tr>
@@ -118,9 +136,75 @@ struct GoLinkRouter {
             ? "<p class=\"empty\">No links have been added yet.</p>"
             : "<table><thead><tr><th>Shortcut</th><th>Destination</th></tr></thead><tbody>\(rows)</tbody></table>"
 
+        let pasteLink = "\(scheme)://\(AppConfig.hostName)/\(AppConfig.pastePath)"
+
         return .html(
             status: "200 OK",
-            body: page(title: AppConfig.appName, body: "<h1>\(AppConfig.appName)</h1>\(content)")
+            body: page(
+                title: AppConfig.suiteName,
+                body: """
+                <h1>\(AppConfig.suiteName)</h1>
+                <nav><a href="\(html(pasteLink))">Pastes (\(pastes.count))</a></nav>
+                <h2>Links</h2>
+                \(content)
+                """
+            )
+        )
+    }
+
+    private func pasteIndexResponse(scheme: String) -> HTTPResponse {
+        let pastes = pasteResolver.snapshot()
+        let rows = pastes.map { paste in
+            let url = "\(scheme)://\(AppConfig.hostName)/\(AppConfig.pastePath)/\(paste.id)"
+            return """
+            <tr>
+              <td><a href="\(html(url))">\(html(paste.title))</a></td>
+              <td><code>\(html(paste.id))</code></td>
+              <td>\(html(relativeDate(paste.updatedAt)))</td>
+            </tr>
+            """
+        }.joined(separator: "\n")
+
+        let content = pastes.isEmpty
+            ? "<p class=\"empty\">No pastes have been added yet.</p>"
+            : "<table><thead><tr><th>Title</th><th>ID</th><th>Updated</th></tr></thead><tbody>\(rows)</tbody></table>"
+
+        return .html(
+            status: "200 OK",
+            body: page(title: "Pastes", body: "<h1>Pastes</h1>\(content)")
+        )
+    }
+
+    private func pasteResponse(id: String, raw: Bool, scheme: String) -> HTTPResponse {
+        guard let paste = pasteResolver.paste(id: id) else {
+            return .html(
+                status: "404 Not Found",
+                body: page(
+                    title: "Paste Not Found",
+                    body: """
+                    <h1>Paste not found</h1>
+                    <p>No paste exists for <code>\(html(id))</code>.</p>
+                    <p><a href="\(scheme)://\(AppConfig.hostName)/\(AppConfig.pastePath)">View all pastes</a></p>
+                    """
+                )
+            )
+        }
+
+        if raw {
+            return .text(status: "200 OK", body: paste.body)
+        }
+
+        let rawURL = "\(scheme)://\(AppConfig.hostName)/\(AppConfig.pastePath)/\(paste.id)/raw"
+        return .html(
+            status: "200 OK",
+            body: page(
+                title: paste.title,
+                body: """
+                <h1>\(html(paste.title))</h1>
+                <p><a href="\(html(rawURL))">Raw text</a> · Updated \(html(relativeDate(paste.updatedAt)))</p>
+                <pre>\(html(paste.body))</pre>
+                """
+            )
         )
     }
 
@@ -151,11 +235,15 @@ struct GoLinkRouter {
             body { margin: 0; padding: 40px 24px; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: Canvas; color: CanvasText; }
             main { max-width: 820px; margin: 0 auto; }
             h1 { font-size: 24px; line-height: 1.2; margin: 0 0 20px; }
+            h2 { font-size: 16px; margin: 28px 0 12px; }
             p { color: color-mix(in srgb, CanvasText 72%, transparent); }
+            nav { margin: 0 0 20px; }
             table { width: 100%; border-collapse: collapse; border: 1px solid color-mix(in srgb, CanvasText 16%, transparent); border-radius: 8px; overflow: hidden; }
             th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent); }
             th { font-size: 12px; text-transform: uppercase; letter-spacing: 0; color: color-mix(in srgb, CanvasText 62%, transparent); background: color-mix(in srgb, CanvasText 6%, transparent); }
             tr:last-child td { border-bottom: 0; }
+            pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid color-mix(in srgb, CanvasText 14%, transparent); border-radius: 8px; background: color-mix(in srgb, CanvasText 5%, transparent); }
+            code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
             a { color: LinkText; text-decoration: none; }
             a:hover { text-decoration: underline; }
             .empty { padding: 24px; border: 1px solid color-mix(in srgb, CanvasText 14%, transparent); border-radius: 8px; }
@@ -173,6 +261,12 @@ struct GoLinkRouter {
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "'", with: "&#39;")
+    }
+
+    private func relativeDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
@@ -205,6 +299,17 @@ private struct HTTPResponse {
             status: status,
             headers: [
                 ("Content-Type", "text/html; charset=utf-8"),
+                ("Cache-Control", "no-cache")
+            ],
+            body: Data(body.utf8)
+        )
+    }
+
+    static func text(status: String, body: String) -> HTTPResponse {
+        HTTPResponse(
+            status: status,
+            headers: [
+                ("Content-Type", "text/plain; charset=utf-8"),
                 ("Cache-Control", "no-cache")
             ],
             body: Data(body.utf8)

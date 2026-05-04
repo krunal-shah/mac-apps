@@ -6,7 +6,7 @@ This repository contains small macOS apps.
 
 | App | Description |
 |---|---|
-| [Go Links](apps/go-links) | Menu bar app for local `go/...` shortcuts. |
+| [Go Links](apps/go-links) | Menu bar app for local `go/...` shortcuts and `go/paste/...` snippets. |
 
 ## Build
 
