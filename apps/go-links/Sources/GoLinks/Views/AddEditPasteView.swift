@@ -60,19 +60,19 @@ struct AddEditPasteView: View {
     }
 
     private var form: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing16) {
             fieldLabel("Title", systemImage: "textformat")
 
             TextField("Untitled Paste", text: $title)
                 .textFieldStyle(.plain)
                 .focused($focusedField, equals: .title)
                 .onSubmit { focusedField = .body }
-                .padding(.horizontal, 10)
-                .frame(height: 34)
-                .background(Color(NSColor.textBackgroundColor))
+                .padding(.horizontal, AppTheme.spacing12)
+                .frame(height: 40)
+                .background(AppTheme.contentBackground)
                 .overlay(inputBorder(hasError: false))
 
-            HStack(spacing: 8) {
+            HStack(spacing: AppTheme.spacing8) {
                 fieldLabel("Content", systemImage: "doc.text")
 
                 Spacer()
@@ -93,19 +93,19 @@ struct AddEditPasteView: View {
                     .font(.system(.body, design: .monospaced))
                     .focused($focusedField, equals: .body)
                     .onChange(of: content) { _ in bodyError = nil }
-                    .padding(6)
+                    .padding(AppTheme.spacing8)
 
                 if content.isEmpty {
                     Text("Paste text, code, notes, or logs")
                         .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 14)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, AppTheme.spacing12)
+                        .padding(.vertical, AppTheme.spacing16)
                         .allowsHitTesting(false)
                 }
             }
             .frame(minHeight: 250, maxHeight: .infinity)
-            .background(Color(NSColor.textBackgroundColor))
+            .background(AppTheme.contentBackground)
             .overlay(inputBorder(hasError: bodyError != nil))
 
             HStack(alignment: .firstTextBaseline) {
@@ -117,14 +117,14 @@ struct AddEditPasteView: View {
 
                 Text("\(content.count) character\(content.count == 1 ? "" : "s")")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding(18)
+        .padding(AppTheme.spacing16)
     }
 
     private var actions: some View {
-        HStack {
+        HStack(spacing: AppTheme.spacing8) {
             Spacer()
             Button("Cancel") {
                 onClose()
@@ -137,24 +137,24 @@ struct AddEditPasteView: View {
             .keyboardShortcut(.return, modifiers: .command)
             .buttonStyle(.borderedProminent)
         }
-        .padding(16)
+        .padding(AppTheme.spacing16)
     }
 
     private func fieldLabel(_ value: String, systemImage: String) -> some View {
         Label(value, systemImage: systemImage)
             .font(.caption)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
     }
 
     private func inputBorder(hasError: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 6)
-            .stroke(hasError ? Color.red : Color(NSColor.separatorColor), lineWidth: 1)
+        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+            .stroke(hasError ? Color.red : AppTheme.separator.opacity(0.3), lineWidth: 1)
     }
 
     private func errorText(_ message: String) -> some View {
         Text(message)
             .font(.caption)
-            .foregroundColor(.red)
+            .foregroundStyle(.red)
             .fixedSize(horizontal: false, vertical: true)
     }
 

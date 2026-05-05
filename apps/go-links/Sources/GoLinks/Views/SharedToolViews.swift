@@ -1,25 +1,46 @@
 import SwiftUI
 import AppKit
 
+enum AppTheme {
+    static let spacing4: CGFloat = 4
+    static let spacing8: CGFloat = 8
+    static let spacing12: CGFloat = 12
+    static let spacing16: CGFloat = 16
+    static let spacing20: CGFloat = 20
+    static let spacing24: CGFloat = 24
+    static let cornerRadius: CGFloat = 10
+    static let controlSize: CGFloat = 32
+    static let rowIconWidth: CGFloat = 20
+
+    static let appBackground = Color(NSColor.windowBackgroundColor)
+    static let groupedBackground = Color(NSColor.controlBackgroundColor)
+    static let contentBackground = Color(NSColor.textBackgroundColor)
+    static let separator = Color(NSColor.separatorColor)
+}
+
 struct ToolIconButton: View {
     let systemName: String
     let help: String
     var tint: Color = .secondary
-    var background: Color = Color(NSColor.controlBackgroundColor)
-    var size: CGFloat = 26
+    var background: Color = AppTheme.groupedBackground
+    var size: CGFloat = AppTheme.controlSize
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(tint)
+            Label(help, systemImage: systemName)
+                .labelStyle(.iconOnly)
+                .font(.body)
+                .foregroundStyle(tint)
                 .frame(width: size, height: size)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.spacing8)
+                .fill(background)
+        )
+        .accessibilityLabel(help)
         .help(help)
     }
 }
@@ -31,27 +52,29 @@ struct SearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .font(.body)
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
 
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(.body)
 
             if !text.isEmpty {
                 Button {
                     text = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                    Label("Clear Search", systemImage: "xmark.circle.fill")
+                        .labelStyle(.iconOnly)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Clear Search")
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 36)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.horizontal, AppTheme.spacing16)
+        .frame(height: 40)
+        .background(AppTheme.groupedBackground)
     }
 }
 
@@ -63,13 +86,13 @@ struct EmptyToolState: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 30, weight: .regular))
-                .foregroundColor(.secondary)
+                .font(.largeTitle)
+                .foregroundStyle(.tertiary)
             Text(title)
                 .font(.headline)
             Text(detail)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
     }
 }

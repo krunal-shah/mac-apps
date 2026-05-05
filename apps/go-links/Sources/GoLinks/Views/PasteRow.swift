@@ -15,58 +15,79 @@ struct PasteRow: View {
     @State private var confirmingDelete = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 8) {
-                        if isSelected {
-                            Image(systemName: "circle.fill")
-                                .font(.system(size: 6, weight: .bold))
-                                .foregroundColor(.accentColor)
-                        }
-
-                        Text(primaryText)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-
-                        Spacer(minLength: 8)
-
-                        Text(relativeUpdatedText)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-
-                    Text(summaryText)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .lineLimit(isPreviewing ? 10 : 2)
-                        .textSelection(.enabled)
-                }
-
-                HStack(spacing: 4) {
-                    ToolIconButton(systemName: isPreviewing ? "eye.fill" : "eye", help: "Preview", size: 23, action: onPreview)
-                    ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy Text", size: 23, action: onCopy)
-                    ToolIconButton(systemName: "pencil", help: "Edit", size: 23, action: onEdit)
-                    ToolIconButton(systemName: "trash", help: "Delete", tint: .red, size: 23) {
-                        confirmingDelete = true
-                    }
-                }
-                .frame(width: 104)
+        HStack(alignment: .top, spacing: AppTheme.spacing12) {
+            Button(action: onSelect) {
+                rowContent
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(primaryText)
+            .accessibilityHint(isSelected ? "Press Return to copy." : "Select this paste.")
+
+            HStack(spacing: AppTheme.spacing4) {
+                ToolIconButton(systemName: isPreviewing ? "eye.fill" : "eye", help: "Preview", size: 32, action: onPreview)
+                ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy Text", size: 32, action: onCopy)
+                ToolIconButton(systemName: "pencil", help: "Edit", size: 32, action: onEdit)
+                ToolIconButton(systemName: "trash", help: "Delete", tint: .red, size: 32) {
+                    confirmingDelete = true
+                }
+            }
+            .frame(width: 140)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, AppTheme.spacing16)
+        .padding(.vertical, AppTheme.spacing12)
         .background(rowBackground)
         .overlay(rowBorder)
-        .onTapGesture(perform: onSelect)
-        .onTapGesture(count: 2, perform: onPreview)
         .confirmationDialog("Delete \(paste.title)?", isPresented: $confirmingDelete) {
             Button("Delete", role: .destructive, action: onDelete)
             Button("Cancel", role: .cancel) {}
         }
+    }
+
+    private var rowContent: some View {
+        HStack(alignment: .top, spacing: AppTheme.spacing12) {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .font(.body)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                .frame(width: AppTheme.rowIconWidth)
+                .padding(.top, AppTheme.spacing4)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+                HStack(alignment: .firstTextBaseline, spacing: AppTheme.spacing8) {
+                    VStack(alignment: .leading, spacing: AppTheme.spacing4) {
+                        Text(primaryText)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Text(summaryText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(isPreviewing ? 12 : 2)
+                            .textSelection(.enabled)
+                    }
+
+                    Spacer(minLength: AppTheme.spacing12)
+
+                    Text(relativeUpdatedText)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+
+                if isPreviewing {
+                    Divider()
+                    HStack(spacing: AppTheme.spacing8) {
+                        Label("Preview", systemImage: "eye")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
     }
 
     private var primaryText: String {
@@ -111,12 +132,12 @@ struct PasteRow: View {
     }
 
     private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(NSColor.controlBackgroundColor))
+        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+            .fill(isSelected ? Color.accentColor.opacity(0.15) : AppTheme.groupedBackground)
     }
 
     private var rowBorder: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color(NSColor.separatorColor).opacity(0.38), lineWidth: 1)
+        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+            .stroke(isSelected ? Color.accentColor.opacity(0.3) : AppTheme.separator.opacity(0.3), lineWidth: 1)
     }
 }

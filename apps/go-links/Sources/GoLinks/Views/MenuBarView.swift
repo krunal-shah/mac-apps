@@ -53,24 +53,25 @@ struct MenuBarView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AppTheme.spacing12) {
             if screen == .setup {
                 ToolIconButton(systemName: "chevron.left", help: "Back") {
                     screen = .tool(selectedTool)
                 }
             } else {
                 Image(systemName: selectedTool.icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.accentColor)
-                    .frame(width: 26, height: 26)
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: AppTheme.controlSize, height: AppTheme.controlSize)
+                    .accessibilityHidden(true)
             }
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
                 Text(headerTitle)
                     .font(.headline)
                 Text(headerSubtitle)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -85,9 +86,9 @@ struct MenuBarView: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Color(NSColor.windowBackgroundColor))
+        .padding(.horizontal, AppTheme.spacing16)
+        .padding(.vertical, AppTheme.spacing12)
+        .background(AppTheme.appBackground)
     }
 
     private var headerTitle: String {
@@ -125,9 +126,9 @@ struct MenuBarView: View {
         .onChange(of: selectedTool) { tool in
             screen = .tool(tool)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.horizontal, AppTheme.spacing16)
+        .padding(.vertical, AppTheme.spacing12)
+        .background(AppTheme.groupedBackground)
     }
 
     @ViewBuilder

@@ -68,14 +68,14 @@ struct AddEditLinkView: View {
     }
 
     private var form: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing16) {
             fieldLabel("Shortcut", systemImage: "textformat")
 
             HStack(spacing: 0) {
                 Text("\(AppConfig.hostName)/")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .frame(width: 44)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 48)
 
                 TextField("docs/search", text: $shortName)
                     .font(.system(.body, design: .monospaced))
@@ -84,9 +84,9 @@ struct AddEditLinkView: View {
                     .onChange(of: shortName) { _ in nameError = nil }
                     .onSubmit { focusedField = .url }
             }
-            .padding(.horizontal, 10)
-            .frame(height: 34)
-            .background(Color(NSColor.textBackgroundColor))
+            .padding(.horizontal, AppTheme.spacing12)
+            .frame(height: 40)
+            .background(AppTheme.contentBackground)
             .overlay(inputBorder(hasError: nameError != nil))
 
             if let nameError {
@@ -101,20 +101,20 @@ struct AddEditLinkView: View {
                 .focused($focusedField, equals: .url)
                 .onChange(of: destinationURL) { _ in urlError = nil }
                 .onSubmit { submit() }
-                .padding(.horizontal, 10)
-                .frame(height: 34)
-                .background(Color(NSColor.textBackgroundColor))
+                .padding(.horizontal, AppTheme.spacing12)
+                .frame(height: 40)
+                .background(AppTheme.contentBackground)
                 .overlay(inputBorder(hasError: urlError != nil))
 
             if let urlError {
                 errorText(urlError)
             }
         }
-        .padding(18)
+        .padding(AppTheme.spacing16)
     }
 
     private var actions: some View {
-        HStack {
+        HStack(spacing: AppTheme.spacing8) {
             Spacer()
             Button("Cancel") {
                 onClose()
@@ -127,24 +127,24 @@ struct AddEditLinkView: View {
             .keyboardShortcut(.return, modifiers: .command)
             .buttonStyle(.borderedProminent)
         }
-        .padding(16)
+        .padding(AppTheme.spacing16)
     }
 
     private func fieldLabel(_ title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
             .font(.caption)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
     }
 
     private func inputBorder(hasError: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 6)
-            .stroke(hasError ? Color.red : Color(NSColor.separatorColor), lineWidth: 1)
+        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+            .stroke(hasError ? Color.red : AppTheme.separator.opacity(0.3), lineWidth: 1)
     }
 
     private func errorText(_ message: String) -> some View {
         Text(message)
             .font(.caption)
-            .foregroundColor(.red)
+            .foregroundStyle(.red)
             .fixedSize(horizontal: false, vertical: true)
     }
 
