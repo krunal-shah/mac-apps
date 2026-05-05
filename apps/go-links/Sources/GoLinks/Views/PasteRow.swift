@@ -15,7 +15,7 @@ struct PasteRow: View {
     @State private var confirmingDelete = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.spacing12) {
+        HStack(alignment: .top, spacing: AppTheme.spacing8) {
             Button(action: onSelect) {
                 rowContent
             }
@@ -24,17 +24,17 @@ struct PasteRow: View {
             .accessibilityHint(isSelected ? "Press Return to copy." : "Select this paste.")
 
             HStack(spacing: AppTheme.spacing4) {
-                ToolIconButton(systemName: isPreviewing ? "eye.fill" : "eye", help: "Preview", size: 32, action: onPreview)
-                ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy Text", size: 32, action: onCopy)
-                ToolIconButton(systemName: "pencil", help: "Edit", size: 32, action: onEdit)
-                ToolIconButton(systemName: "trash", help: "Delete", tint: .red, size: 32) {
+                ToolIconButton(systemName: isPreviewing ? "eye.fill" : "eye", help: "Preview", size: AppTheme.compactControlSize, action: onPreview)
+                ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy Text", size: AppTheme.compactControlSize, action: onCopy)
+                ToolIconButton(systemName: "pencil", help: "Edit", size: AppTheme.compactControlSize, action: onEdit)
+                ToolIconButton(systemName: "trash", help: "Delete", tint: .red, size: AppTheme.compactControlSize) {
                     confirmingDelete = true
                 }
             }
-            .frame(width: 140)
+            .frame(width: 124)
         }
-        .padding(.horizontal, AppTheme.spacing16)
-        .padding(.vertical, AppTheme.spacing12)
+        .padding(.horizontal, AppTheme.spacing12)
+        .padding(.vertical, AppTheme.spacing8)
         .background(rowBackground)
         .overlay(rowBorder)
         .confirmationDialog("Delete \(paste.title)?", isPresented: $confirmingDelete) {
@@ -44,79 +44,42 @@ struct PasteRow: View {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .top, spacing: AppTheme.spacing12) {
+        HStack(alignment: .top, spacing: AppTheme.spacing8) {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .font(.body)
+                .font(.caption)
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                .frame(width: AppTheme.rowIconWidth)
-                .padding(.top, AppTheme.spacing4)
+                .frame(width: 16)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: AppTheme.spacing8) {
-                HStack(alignment: .firstTextBaseline, spacing: AppTheme.spacing8) {
-                    VStack(alignment: .leading, spacing: AppTheme.spacing4) {
-                        Text(primaryText)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
+            HStack(alignment: .firstTextBaseline, spacing: AppTheme.spacing8) {
+                Text(displayText)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(isPreviewing ? 10 : 2)
+                    .textSelection(.enabled)
 
-                        Text(summaryText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(isPreviewing ? 12 : 2)
-                            .textSelection(.enabled)
-                    }
+                Spacer(minLength: AppTheme.spacing8)
 
-                    Spacer(minLength: AppTheme.spacing12)
-
-                    Text(relativeUpdatedText)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
-
-                if isPreviewing {
-                    Divider()
-                    HStack(spacing: AppTheme.spacing8) {
-                        Label("Preview", systemImage: "eye")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                }
+                Text(relativeUpdatedText)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
     }
 
     private var primaryText: String {
-        firstLine.isEmpty ? "Untitled Paste" : firstLine
+        displayText
     }
 
-    private var summaryText: String {
-        if isPreviewing {
-            return paste.body
-        }
-
-        let summary = flattenedBody
-        if summary == firstLine {
-            return "\(paste.body.count) character\(paste.body.count == 1 ? "" : "s")"
-        }
-        return summary
+    private var displayText: String {
+        let body = normalizedBody
+        return body.isEmpty ? "Untitled Paste" : body
     }
 
-    private var firstLine: String {
-        paste.body
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-            .split(separator: "\n", omittingEmptySubsequences: true)
-            .first
-            .map(String.init)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    }
-
-    private var flattenedBody: String {
+    private var normalizedBody: String {
         paste.body
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")

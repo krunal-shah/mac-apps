@@ -9,7 +9,9 @@ enum AppTheme {
     static let spacing20: CGFloat = 20
     static let spacing24: CGFloat = 24
     static let cornerRadius: CGFloat = 10
+    static let compactCornerRadius: CGFloat = 8
     static let controlSize: CGFloat = 32
+    static let compactControlSize: CGFloat = 28
     static let rowIconWidth: CGFloat = 20
 
     static let appBackground = Color(NSColor.windowBackgroundColor)
@@ -22,7 +24,7 @@ struct ToolIconButton: View {
     let systemName: String
     let help: String
     var tint: Color = .secondary
-    var background: Color = AppTheme.groupedBackground
+    var background: Color?
     var size: CGFloat = AppTheme.controlSize
     let action: () -> Void
 
@@ -36,12 +38,17 @@ struct ToolIconButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.spacing8)
-                .fill(background)
-        )
+        .background(buttonBackground)
         .accessibilityLabel(help)
         .help(help)
+    }
+
+    @ViewBuilder
+    private var buttonBackground: some View {
+        if let background {
+            RoundedRectangle(cornerRadius: AppTheme.compactCornerRadius)
+                .fill(background)
+        }
     }
 }
 
@@ -50,7 +57,7 @@ struct SearchField: View {
     let placeholder: String
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppTheme.spacing8) {
             Image(systemName: "magnifyingglass")
                 .font(.body)
                 .foregroundStyle(.tertiary)
@@ -72,9 +79,17 @@ struct SearchField: View {
                 .help("Clear Search")
             }
         }
-        .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 40)
-        .background(AppTheme.groupedBackground)
+        .padding(.horizontal, AppTheme.spacing12)
+        .frame(height: 32)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.compactCornerRadius)
+                .fill(AppTheme.groupedBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.compactCornerRadius)
+                .stroke(AppTheme.separator.opacity(0.3), lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity)
     }
 }
 

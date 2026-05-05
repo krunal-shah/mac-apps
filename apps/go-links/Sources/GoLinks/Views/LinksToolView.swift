@@ -11,11 +11,6 @@ struct LinksToolView: View {
         case list
         case add
         case edit(GoLink)
-
-        var isEditing: Bool {
-            if case .list = self { return false }
-            return true
-        }
     }
 
     private var filteredLinks: [GoLink] {
@@ -27,40 +22,27 @@ struct LinksToolView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolBar
-            Divider()
-            mainContent
-        }
+        mainContent
     }
 
-    private var toolBar: some View {
+    private var editToolBar: some View {
         HStack(spacing: AppTheme.spacing12) {
-            if screen.isEditing {
-                ToolIconButton(systemName: "chevron.left", help: "Back") {
-                    screen = .list
-                }
+            ToolIconButton(systemName: "chevron.left", help: "Back", size: AppTheme.compactControlSize) {
+                screen = .list
             }
 
             VStack(alignment: .leading, spacing: AppTheme.spacing4) {
                 Text(titleText)
-                    .font(.subheadline)
-                    .bold()
+                    .font(.subheadline.weight(.semibold))
                 Text(subtitleText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
-
-            if !screen.isEditing {
-                ToolIconButton(systemName: "plus", help: "Add Link") {
-                    screen = .add
-                }
-            }
         }
         .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 48)
+        .frame(height: 44)
         .background(AppTheme.appBackground)
     }
 
@@ -90,28 +72,55 @@ struct LinksToolView: View {
     private var mainContent: some View {
         switch screen {
         case .list:
-            VStack(spacing: 0) {
-                searchBar
-                Divider()
-                linkContent
-                Divider()
-                footer
-            }
+            listContent
         case .add:
-            AddEditLinkView(mode: .add) {
-                screen = .list
+            VStack(spacing: 0) {
+                editToolBar
+                Divider()
+                AddEditLinkView(mode: .add) {
+                    screen = .list
+                }
+                .environmentObject(store)
             }
-            .environmentObject(store)
         case .edit(let link):
-            AddEditLinkView(mode: .edit(link)) {
-                screen = .list
+            VStack(spacing: 0) {
+                editToolBar
+                Divider()
+                AddEditLinkView(mode: .edit(link)) {
+                    screen = .list
+                }
+                .environmentObject(store)
             }
-            .environmentObject(store)
         }
     }
 
-    private var searchBar: some View {
-        SearchField(text: $searchText, placeholder: "Search links")
+    private var listContent: some View {
+        VStack(spacing: 0) {
+            listControls
+            Divider()
+            linkContent
+            Divider()
+            footer
+        }
+    }
+
+    private var listControls: some View {
+        HStack(spacing: AppTheme.spacing8) {
+            SearchField(text: $searchText, placeholder: "Search links")
+
+            ToolIconButton(
+                systemName: "plus",
+                help: "Add Link",
+                tint: .white,
+                background: .accentColor,
+                size: AppTheme.compactControlSize
+            ) {
+                screen = .add
+            }
+        }
+        .padding(.horizontal, AppTheme.spacing12)
+        .padding(.vertical, AppTheme.spacing8)
+        .background(AppTheme.appBackground)
     }
 
     @ViewBuilder
@@ -152,7 +161,7 @@ struct LinksToolView: View {
             .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppTheme.spacing24)
+        .padding(AppTheme.spacing20)
     }
 
     private var footer: some View {
@@ -174,8 +183,8 @@ struct LinksToolView: View {
             .buttonStyle(.plain)
             .disabled(!setup.hostsConfigured || !setup.pfActiveInKernel)
         }
-        .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 40)
+        .padding(.horizontal, AppTheme.spacing12)
+        .frame(height: 32)
         .background(AppTheme.groupedBackground)
     }
 
