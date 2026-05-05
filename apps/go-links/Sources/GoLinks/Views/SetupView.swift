@@ -23,10 +23,10 @@ struct SetupView: View {
 
     private var content: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing16) {
                 sectionTitle("Status")
 
-                VStack(spacing: 8) {
+                VStack(spacing: AppTheme.spacing8) {
                     StatusRow(
                         title: "Hostname",
                         value: "127.0.0.1 \(AppConfig.hostName)",
@@ -52,7 +52,7 @@ struct SetupView: View {
                 sectionTitle("Diagnostics")
 
                 if let diagnostics = setup.diagnostics {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: AppTheme.spacing8) {
                         DiagnosticRow(label: "Port 80", value: diagnostics.port80Process ?? "No listener")
                         DiagnosticRow(label: "Port \(AppConfig.httpPort)", value: diagnostics.port9876Process ?? "No listener")
                         DiagnosticRow(label: "Port \(AppConfig.httpsPort)", value: diagnostics.port9877Process ?? "No listener")
@@ -61,9 +61,9 @@ struct SetupView: View {
                             DiagnosticRow(label: "Hosts", value: hostsLine)
                         }
                     }
-                    .padding(12)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(AppTheme.spacing12)
+                    .background(AppTheme.groupedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 } else {
                     Button {
                         setup.runDiagnostics()
@@ -75,19 +75,19 @@ struct SetupView: View {
                 if let lastError = setup.lastError {
                     Label(lastError, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
-                        .foregroundColor(.red)
-                        .padding(10)
+                        .foregroundStyle(.red)
+                        .padding(AppTheme.spacing12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.red.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 }
             }
-            .padding(16)
+            .padding(AppTheme.spacing16)
         }
     }
 
     private var actions: some View {
-        HStack {
+        HStack(spacing: AppTheme.spacing8) {
             Button {
                 setup.refresh()
                 setup.runDiagnostics()
@@ -126,14 +126,14 @@ struct SetupView: View {
             .buttonStyle(.borderedProminent)
             .disabled(setup.isRunningSetup)
         }
-        .padding(16)
+        .padding(AppTheme.spacing16)
     }
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
             .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundColor(.secondary)
+            .bold()
+            .foregroundStyle(.secondary)
             .textCase(.uppercase)
     }
 }
@@ -144,26 +144,26 @@ private struct StatusRow: View {
     let isComplete: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AppTheme.spacing12) {
             Image(systemName: isComplete ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(isComplete ? .green : .secondary)
-                .frame(width: 18)
+                .foregroundStyle(isComplete ? Color.green : .secondary)
+                .frame(width: AppTheme.rowIconWidth)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
                 Text(title)
                     .font(.subheadline)
                 Text(value)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
 
             Spacer()
         }
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(AppTheme.spacing12)
+        .background(AppTheme.groupedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
     }
 }
 
@@ -172,11 +172,11 @@ private struct DiagnosticRow: View {
     let value: String
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: AppTheme.spacing8) {
             Text(label)
                 .font(.caption)
-                .foregroundColor(.secondary)
-                .frame(width: 92, alignment: .leading)
+                .foregroundStyle(.secondary)
+                .frame(width: 96, alignment: .leading)
             Text(value)
                 .font(.system(.caption, design: .monospaced))
                 .lineLimit(1)

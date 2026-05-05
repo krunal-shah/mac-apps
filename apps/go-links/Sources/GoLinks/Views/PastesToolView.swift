@@ -61,27 +61,27 @@ struct PastesToolView: View {
     }
 
     private var toolBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AppTheme.spacing12) {
             if screen.isEditing {
                 ToolIconButton(systemName: "chevron.left", help: "Back") {
                     screen = .list
                 }
             }
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
                 Text(titleText)
                     .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .bold()
                 Text(subtitleText)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, AppTheme.spacing16)
         .frame(height: 48)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(AppTheme.appBackground)
     }
 
     private var titleText: String {
@@ -134,7 +134,7 @@ struct PastesToolView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(spacing: AppTheme.spacing8) {
                         ForEach(filteredPastes) { paste in
                             PasteRow(
                                 paste: paste,
@@ -150,7 +150,7 @@ struct PastesToolView: View {
                             .id(paste.id)
                         }
                     }
-                    .padding(10)
+                    .padding(AppTheme.spacing12)
                 }
                 .onChange(of: selectedPasteID) { id in
                     guard let id else { return }
@@ -159,36 +159,36 @@ struct PastesToolView: View {
                     }
                 }
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(AppTheme.contentBackground)
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: AppTheme.spacing16) {
             EmptyToolState(icon: "doc.on.clipboard", title: "No Pastes", detail: "Copy text anywhere to add it here.")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        .padding(AppTheme.spacing24)
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppTheme.spacing8) {
             StatusDot(color: setup.hostsConfigured && setup.pfActiveInKernel && clipboardMonitor.isRunning ? .green : .orange)
 
             Text(statusText)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Spacer()
 
             Text("\(filteredPastes.count) shown")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .monospacedDigit()
         }
-        .padding(.horizontal, 14)
-        .frame(height: 38)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.horizontal, AppTheme.spacing16)
+        .frame(height: 40)
+        .background(AppTheme.groupedBackground)
     }
 
     private func handleKeyDown(_ event: NSEvent) -> Bool {

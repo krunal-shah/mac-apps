@@ -35,20 +35,20 @@ struct LinksToolView: View {
     }
 
     private var toolBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AppTheme.spacing12) {
             if screen.isEditing {
                 ToolIconButton(systemName: "chevron.left", help: "Back") {
                     screen = .list
                 }
             }
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
                 Text(titleText)
                     .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .bold()
                 Text(subtitleText)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -59,9 +59,9 @@ struct LinksToolView: View {
                 }
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, AppTheme.spacing16)
         .frame(height: 48)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(AppTheme.appBackground)
     }
 
     private var titleText: String {
@@ -132,17 +132,17 @@ struct LinksToolView: View {
 
                         if link.id != filteredLinks.last?.id {
                             Divider()
-                                .padding(.leading, 14)
+                                .padding(.leading, AppTheme.spacing16)
                         }
                     }
                 }
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(AppTheme.contentBackground)
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: AppTheme.spacing16) {
             EmptyToolState(icon: "link.badge.plus", title: "No Links", detail: "Add your first shortcut.")
             Button {
                 screen = .add
@@ -152,16 +152,16 @@ struct LinksToolView: View {
             .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        .padding(AppTheme.spacing24)
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppTheme.spacing8) {
             StatusDot(color: setup.hostsConfigured && setup.pfActiveInKernel ? .green : .orange)
 
             Text(statusText)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Spacer()
 
@@ -174,9 +174,9 @@ struct LinksToolView: View {
             .buttonStyle(.plain)
             .disabled(!setup.hostsConfigured || !setup.pfActiveInKernel)
         }
-        .padding(.horizontal, 14)
-        .frame(height: 38)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.horizontal, AppTheme.spacing16)
+        .frame(height: 40)
+        .background(AppTheme.groupedBackground)
     }
 
     private var statusText: String {
@@ -196,6 +196,6 @@ struct StatusDot: View {
     var body: some View {
         Circle()
             .fill(color)
-            .frame(width: 7, height: 7)
+            .frame(width: AppTheme.spacing8, height: AppTheme.spacing8)
     }
 }
