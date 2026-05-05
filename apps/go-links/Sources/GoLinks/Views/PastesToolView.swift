@@ -16,11 +16,6 @@ struct PastesToolView: View {
     private enum Screen: Equatable {
         case list
         case edit(PasteItem)
-
-        var isEditing: Bool {
-            if case .list = self { return false }
-            return true
-        }
     }
 
     private var filteredPastes: [PasteItem] {
@@ -42,11 +37,7 @@ struct PastesToolView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolBar
-            Divider()
-            mainContent
-        }
+        mainContent
         .background(
             KeyboardCaptureView(focusToken: focusToken, onKeyDown: handleKeyDown)
                 .frame(width: 0, height: 0)
@@ -60,19 +51,16 @@ struct PastesToolView: View {
         }
     }
 
-    private var toolBar: some View {
+    private var editToolBar: some View {
         HStack(spacing: AppTheme.spacing12) {
-            if screen.isEditing {
-                ToolIconButton(systemName: "chevron.left", help: "Back") {
-                    screen = .list
-                }
+            ToolIconButton(systemName: "chevron.left", help: "Back", size: AppTheme.compactControlSize) {
+                screen = .list
             }
 
             VStack(alignment: .leading, spacing: AppTheme.spacing4) {
-                Text(titleText)
-                    .font(.subheadline)
-                    .bold()
-                Text(subtitleText)
+                Text("Edit Paste")
+                    .font(.subheadline.weight(.semibold))
+                Text(editSubtitleText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -80,49 +68,49 @@ struct PastesToolView: View {
             Spacer()
         }
         .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 48)
+        .frame(height: 44)
         .background(AppTheme.appBackground)
     }
 
-    private var titleText: String {
-        switch screen {
-        case .list:
-            return "Pastebin"
-        case .edit:
-            return "Edit Paste"
-        }
-    }
-
-    private var subtitleText: String {
-        switch screen {
-        case .list:
-            return "Clipboard history"
-        case .edit(let paste):
-            return paste.title
-        }
+    private var editSubtitleText: String {
+        guard case .edit(let paste) = screen else { return "" }
+        return paste.title
     }
 
     @ViewBuilder
     private var mainContent: some View {
         switch screen {
         case .list:
-            VStack(spacing: 0) {
-                searchBar
-                Divider()
-                pasteContent
-                Divider()
-                footer
-            }
+            listContent
         case .edit(let paste):
-            AddEditPasteView(mode: .edit(paste)) {
-                screen = .list
+            VStack(spacing: 0) {
+                editToolBar
+                Divider()
+                AddEditPasteView(mode: .edit(paste)) {
+                    screen = .list
+                }
+                .environmentObject(store)
             }
-            .environmentObject(store)
         }
     }
 
-    private var searchBar: some View {
-        SearchField(text: $searchText, placeholder: "Search pastes")
+    private var listContent: some View {
+        VStack(spacing: 0) {
+            listControls
+            Divider()
+            pasteContent
+            Divider()
+            footer
+        }
+    }
+
+    private var listControls: some View {
+        HStack(spacing: AppTheme.spacing8) {
+            SearchField(text: $searchText, placeholder: "Search pastes")
+        }
+        .padding(.horizontal, AppTheme.spacing12)
+        .padding(.vertical, AppTheme.spacing8)
+        .background(AppTheme.appBackground)
     }
 
     @ViewBuilder
@@ -134,7 +122,7 @@ struct PastesToolView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.spacing8) {
+                    LazyVStack(spacing: AppTheme.spacing4) {
                         ForEach(filteredPastes) { paste in
                             PasteRow(
                                 paste: paste,
@@ -150,7 +138,7 @@ struct PastesToolView: View {
                             .id(paste.id)
                         }
                     }
-                    .padding(AppTheme.spacing12)
+                    .padding(AppTheme.spacing8)
                 }
                 .onChange(of: selectedPasteID) { id in
                     guard let id else { return }
@@ -168,7 +156,7 @@ struct PastesToolView: View {
             EmptyToolState(icon: "doc.on.clipboard", title: "No Pastes", detail: "Copy text anywhere to add it here.")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppTheme.spacing24)
+        .padding(AppTheme.spacing20)
     }
 
     private var footer: some View {
@@ -186,8 +174,8 @@ struct PastesToolView: View {
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
         }
-        .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 40)
+        .padding(.horizontal, AppTheme.spacing12)
+        .frame(height: 32)
         .background(AppTheme.groupedBackground)
     }
 

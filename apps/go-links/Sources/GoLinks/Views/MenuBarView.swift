@@ -42,27 +42,24 @@ struct MenuBarView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            if screen != .setup {
-                toolSwitcher
-                Divider()
-            }
             toolContent
         }
-        .frame(width: 560, height: 660)
+        .frame(width: 520, height: 560)
         .background(Color(NSColor.windowBackgroundColor))
+        .animation(.easeInOut(duration: 0.16), value: screen)
     }
 
     private var header: some View {
         HStack(spacing: AppTheme.spacing12) {
             if screen == .setup {
-                ToolIconButton(systemName: "chevron.left", help: "Back") {
+                ToolIconButton(systemName: "chevron.left", help: "Back", size: AppTheme.compactControlSize) {
                     screen = .tool(selectedTool)
                 }
             } else {
                 Image(systemName: selectedTool.icon)
-                    .font(.title3)
+                    .font(.body)
                     .foregroundStyle(.tint)
-                    .frame(width: AppTheme.controlSize, height: AppTheme.controlSize)
+                    .frame(width: AppTheme.compactControlSize, height: AppTheme.compactControlSize)
                     .accessibilityHidden(true)
             }
 
@@ -77,17 +74,19 @@ struct MenuBarView: View {
             Spacer()
 
             if screen != .setup {
-                ToolIconButton(systemName: "gearshape", help: "Settings") {
+                compactToolSwitcher
+
+                ToolIconButton(systemName: "gearshape", help: "Settings", size: AppTheme.compactControlSize) {
                     screen = .setup
                 }
             }
 
-            ToolIconButton(systemName: "power", help: "Quit") {
+            ToolIconButton(systemName: "power", help: "Quit", size: AppTheme.compactControlSize) {
                 NSApplication.shared.terminate(nil)
             }
         }
         .padding(.horizontal, AppTheme.spacing16)
-        .padding(.vertical, AppTheme.spacing12)
+        .frame(height: 52)
         .background(AppTheme.appBackground)
     }
 
@@ -95,8 +94,8 @@ struct MenuBarView: View {
         switch screen {
         case .setup:
             return "Settings"
-        case .tool:
-            return AppConfig.suiteName
+        case .tool(let tool):
+            return tool.title
         }
     }
 
@@ -114,21 +113,22 @@ struct MenuBarView: View {
         }
     }
 
-    private var toolSwitcher: some View {
+    private var compactToolSwitcher: some View {
         Picker("Tool", selection: $selectedTool) {
             ForEach(AppTool.allCases) { tool in
-                Label(tool.title, systemImage: tool.icon)
+                Text(tool.title)
                     .tag(tool)
             }
         }
         .pickerStyle(.segmented)
+        .controlSize(.small)
         .labelsHidden()
+        .frame(width: 152)
         .onChange(of: selectedTool) { tool in
-            screen = .tool(tool)
+            withAnimation(.easeInOut(duration: 0.16)) {
+                screen = .tool(tool)
+            }
         }
-        .padding(.horizontal, AppTheme.spacing16)
-        .padding(.vertical, AppTheme.spacing12)
-        .background(AppTheme.groupedBackground)
     }
 
     @ViewBuilder
