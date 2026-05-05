@@ -9,19 +9,15 @@ enum AppTool: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .links:
-            return "Links"
-        case .pastes:
-            return "Pastes"
+        case .links:    return "Links"
+        case .pastes:   return "Pastes"
         }
     }
 
     var icon: String {
         switch self {
-        case .links:
-            return "link"
-        case .pastes:
-            return "doc.on.clipboard"
+        case .links:    return "link"
+        case .pastes:   return "doc.on.clipboard"
         }
     }
 }
@@ -40,104 +36,66 @@ struct MenuBarView: View {
     @State private var menuOpenToken = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
+        HStack(spacing: 0) {
+            sideRail
+
             toolContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(width: AppTheme.menuWidth - AppTheme.railWidth)
         }
-        .frame(width: 520, height: 560, alignment: .top)
-        .background(Color(NSColor.windowBackgroundColor))
+        .frame(width: AppTheme.menuWidth, height: AppTheme.menuHeight, alignment: .top)
+        .background(AppTheme.shelfBase)
+        .preferredColorScheme(.light)
         .background(
             MenuWindowActivationObserver {
                 resetForMenuOpen()
             }
             .frame(width: 0, height: 0)
         )
-        .animation(.easeInOut(duration: 0.16), value: screen)
+        .animation(AppTheme.selectAnimation, value: screen)
     }
 
-    private var header: some View {
-        HStack(spacing: AppTheme.spacing12) {
-            if screen == .setup {
-                ToolIconButton(systemName: "chevron.left", help: "Back", size: AppTheme.compactControlSize) {
-                    screen = .tool(selectedTool)
-                }
-            } else {
-                Image(systemName: selectedTool.icon)
-                    .font(.body)
-                    .foregroundStyle(.tint)
-                    .frame(width: AppTheme.compactControlSize, height: AppTheme.compactControlSize)
-                    .accessibilityHidden(true)
-            }
+    // MARK: Rail
 
-            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
-                Text(headerTitle)
-                    .font(.headline)
-                Text(headerSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var sideRail: some View {
+        VStack(spacing: AppTheme.spacing6) {
+            Spacer().frame(height: AppTheme.spacing12)
+
+            ForEach(AppTool.allCases) { tool in
+                RailItem(
+                    icon: tool.icon,
+                    label: tool.title,
+                    isActive: screen == .tool(tool)
+                ) {
+                    selectedTool = tool
+                    screen = .tool(tool)
+                }
             }
 
             Spacer()
 
-            if screen != .setup {
-                compactToolSwitcher
-
-                ToolIconButton(systemName: "gearshape", help: "Settings", size: AppTheme.compactControlSize) {
-                    screen = .setup
-                }
+            RailItem(
+                icon: "slider.horizontal.3",
+                label: "Setup",
+                isActive: screen == .setup
+            ) {
+                screen = .setup
             }
 
-            ToolIconButton(systemName: "power", help: "Quit", size: AppTheme.compactControlSize) {
+            RailItem(
+                icon: "power",
+                label: "Quit",
+                isActive: false
+            ) {
                 NSApplication.shared.terminate(nil)
             }
+
+            Spacer().frame(height: AppTheme.spacing12)
         }
-        .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 52)
-        .background(AppTheme.appBackground)
+        .frame(width: AppTheme.railWidth, height: AppTheme.menuHeight)
+        .background(AppTheme.shelfRail)
     }
 
-    private var headerTitle: String {
-        switch screen {
-        case .setup:
-            return "Settings"
-        case .tool(let tool):
-            return tool.title
-        }
-    }
-
-    private var headerSubtitle: String {
-        switch screen {
-        case .setup:
-            return "System setup and diagnostics"
-        case .tool(let tool):
-            switch tool {
-            case .links:
-                return "\(links.links.count) link\(links.links.count == 1 ? "" : "s")"
-            case .pastes:
-                return "\(pastes.pastes.count) paste\(pastes.pastes.count == 1 ? "" : "s")"
-            }
-        }
-    }
-
-    private var compactToolSwitcher: some View {
-        Picker("Tool", selection: $selectedTool) {
-            ForEach(AppTool.allCases) { tool in
-                Text(tool.title)
-                    .tag(tool)
-            }
-        }
-        .pickerStyle(.segmented)
-        .controlSize(.small)
-        .labelsHidden()
-        .frame(width: 152)
-        .onChange(of: selectedTool) { tool in
-            withAnimation(.easeInOut(duration: 0.16)) {
-                screen = .tool(tool)
-            }
-        }
-    }
+    // MARK: Content
 
     @ViewBuilder
     private var toolContent: some View {
