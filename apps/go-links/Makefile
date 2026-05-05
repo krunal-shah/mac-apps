@@ -12,7 +12,7 @@ INFO_PLIST  = Resources/Info.plist
 INSTALL_DIR = /Applications
 ZIP_FILE    = $(BUILD_DIR)/$(APP_NAME).app.zip
 
-.PHONY: build app install clean run open release-zip
+.PHONY: build app install clean run open test release-zip
 
 # ------------------------------------
 # 1. Compile with Swift Package Manager
@@ -56,7 +56,13 @@ open: app
 	open "$(APP_BUNDLE)"
 
 # ------------------------------------
-# 6. Create a release zip
+# 6. Run tests
+# ------------------------------------
+test:
+	swift test
+
+# ------------------------------------
+# 7. Create a release zip
 # ------------------------------------
 release-zip: app
 	@echo "→ Creating $(ZIP_FILE) …"
@@ -65,7 +71,7 @@ release-zip: app
 	@echo "✓ $(ZIP_FILE) ready"
 
 # ------------------------------------
-# 7. Clean
+# 8. Clean
 # ------------------------------------
 clean:
 	rm -rf .build

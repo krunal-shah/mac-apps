@@ -1,245 +1,187 @@
 import SwiftUI
 
 struct SetupView: View {
-    @EnvironmentObject var setup: SetupManager
+    let onClose: () -> Void
+
+    @EnvironmentObject private var setup: SetupManager
+
+    init(onClose: @escaping () -> Void = {}) {
+        self.onClose = onClose
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                Image(systemName: "gearshape.2.fill")
-                    .font(.title2)
-                    .foregroundColor(.accentColor)
-                Text("System Setup")
-                    .font(.headline)
-                Spacer()
-                Button("Done") { SetupPanel.shared.close() }
-            }
-            .padding(16)
-
+        VStack(spacing: 0) {
+            content
             Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-
-                    // ── Status ──────────────────────────────────────────
-                    GroupBox("System Status") {
-                        VStack(spacing: 8) {
-                            StatusRow(
-                                title: "/etc/hosts entry",
-                                description: "Maps the hostname `go` → 127.0.0.1.",
-                                isComplete: setup.hostsConfigured
-                            )
-                            StatusRow(
-                                title: "pf.conf anchor (persistent)",
-                                description: "Survives reboots. Redirects :80 → :\(setup.serverPort).",
-                                isComplete: setup.pfConfigured
-                            )
-                            StatusRow(
-                                title: "pf rule active in kernel",
-                                description: "Port forwarding is live right now.",
-                                isComplete: setup.pfActiveInKernel
-                            )
-                        }
-                    }
-
-                    // ── Chrome Note ─────────────────────────────────────
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label("Chrome / Arc tip", systemImage: "info.circle")
-                                .font(.subheadline).fontWeight(.semibold)
-
-                            Text("""
-                            Chrome treats single-word addresses without a dot (like `go`) \
-                            as search queries. **Two fixes:**
-                            """)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                tipRow(
-                                    number: "1",
-                                    title: "Type the full URL once",
-                                    detail: "In Chrome's address bar type http://go/ (with http://) once. Chrome will remember go is a hostname from then on."
-                                )
-                                tipRow(
-                                    number: "2",
-                                    title: "Add a Chrome search shortcut (alternative)",
-                                    detail: "Settings → Search engines → Site Search → Add. Set keyword to go and URL to http://localhost:\(setup.serverPort)/%s. Then type: go [tab] mylink."
-                                )
-                            }
-
-                            Button {
-                                NSWorkspace.shared.open(URL(string: "http://go/")!)
-                            } label: {
-                                Label("Open http://go/ in browser", systemImage: "arrow.up.right.square")
-                                    .font(.caption)
-                            }
-                            .disabled(!setup.hostsConfigured || !setup.pfActiveInKernel)
-                        }
-                    }
-
-                    // ── Diagnostics ─────────────────────────────────────
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Label("Port Diagnostics", systemImage: "stethoscope")
-                                    .font(.subheadline).fontWeight(.semibold)
-                                Spacer()
-                                Button("Refresh") {
-                                    setup.refresh()
-                                    setup.runDiagnostics()
-                                }
-                                .font(.caption)
-                            }
-
-                            if let d = setup.diagnostics {
-                                diagRow(port: 80,  process: d.port80Process)
-                                diagRow(port: Int(setup.serverPort), process: d.port9876Process)
-
-                                if let hosts = d.hostsGoLine {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green).font(.caption)
-                                        Text(hosts)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-
-                                if d.port80Process != nil && d.port80Process != "GoLinks" {
-                                    HStack(alignment: .top, spacing: 6) {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundColor(.orange).font(.caption)
-                                        Text("Another process is on port 80. The pf redirect can't reach our server. Quit that process or uninstall any other go-link tool before running Setup.")
-                                            .font(.caption)
-                                            .foregroundColor(.orange)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    .padding(8)
-                                    .background(Color.orange.opacity(0.08))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                                }
-                            } else {
-                                Button("Run Diagnostics") {
-                                    setup.runDiagnostics()
-                                }
-                                .font(.caption)
-                            }
-                        }
-                    }
-
-                    // ── Error ───────────────────────────────────────────
-                    if let err = setup.lastError {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.red)
-                            Text(err)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(10)
-                        .background(Color.red.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                }
-                .padding(16)
-            }
-
-            Divider()
-
-            // ── Actions ─────────────────────────────────────────────────
-            HStack {
-                if setup.hostsConfigured || setup.pfConfigured {
-                    Button(role: .destructive) {
-                        Task { await setup.removeSetup() }
-                    } label: {
-                        Label("Remove", systemImage: "trash")
-                    }
-                    .disabled(setup.isRunningSetup)
-                }
-
-                Spacer()
-
-                Button {
-                    Task { await setup.runSetup() }
-                } label: {
-                    if setup.isRunningSetup {
-                        ProgressView().controlSize(.small).padding(.horizontal, 6)
-                    } else {
-                        Label(
-                            setup.hostsConfigured && setup.pfConfigured
-                                ? "Re-apply Setup" : "Run Setup",
-                            systemImage: "lock.shield"
-                        )
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(setup.isRunningSetup)
-            }
-            .padding(16)
+            actions
         }
-        .frame(width: 440)
         .onAppear {
             setup.refresh()
             setup.runDiagnostics()
         }
     }
 
-    // MARK: - Private helpers
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.spacing16) {
+                sectionTitle("Status")
 
-    private func tipRow(number: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text(number)
-                .font(.caption2).fontWeight(.bold)
-                .foregroundColor(.white)
-                .frame(width: 16, height: 16)
-                .background(Color.accentColor)
-                .clipShape(Circle())
-                .padding(.top, 1)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.caption).fontWeight(.medium)
-                Text(detail).font(.caption).foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: AppTheme.spacing8) {
+                    StatusRow(
+                        title: "Hostname",
+                        value: "127.0.0.1 \(AppConfig.hostName)",
+                        isComplete: setup.hostsConfigured
+                    )
+                    StatusRow(
+                        title: "Port Forwarding",
+                        value: "80 -> \(AppConfig.httpPort), 443 -> \(AppConfig.httpsPort)",
+                        isComplete: setup.pfConfigured
+                    )
+                    StatusRow(
+                        title: "Active Rule",
+                        value: setup.pfActiveInKernel ? "Reachable on port 80" : "Not active",
+                        isComplete: setup.pfActiveInKernel
+                    )
+                    StatusRow(
+                        title: "HTTPS Certificate",
+                        value: setup.tlsCertConfigured ? "Installed" : "Missing",
+                        isComplete: setup.tlsCertConfigured
+                    )
+                }
+
+                sectionTitle("Diagnostics")
+
+                if let diagnostics = setup.diagnostics {
+                    VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+                        DiagnosticRow(label: "Port 80", value: diagnostics.port80Process ?? "No listener")
+                        DiagnosticRow(label: "Port \(AppConfig.httpPort)", value: diagnostics.port9876Process ?? "No listener")
+                        DiagnosticRow(label: "Port \(AppConfig.httpsPort)", value: diagnostics.port9877Process ?? "No listener")
+                        DiagnosticRow(label: "Forward Check", value: diagnostics.httpForwardReachable ? "Reachable" : "Not reachable")
+                        if let hostsLine = diagnostics.hostsGoLine {
+                            DiagnosticRow(label: "Hosts", value: hostsLine)
+                        }
+                    }
+                    .padding(AppTheme.spacing12)
+                    .background(AppTheme.groupedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                } else {
+                    Button {
+                        setup.runDiagnostics()
+                    } label: {
+                        Label("Run Diagnostics", systemImage: "stethoscope")
+                    }
+                }
+
+                if let lastError = setup.lastError {
+                    Label(lastError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(AppTheme.spacing12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.red.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                }
             }
+            .padding(AppTheme.spacing16)
         }
     }
 
-    private func diagRow(port: Int, process: String?) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: process != nil ? "checkmark.circle.fill" : "circle.dashed")
-                .foregroundColor(process != nil ? .green : .secondary)
-                .font(.caption)
-            Text(":\(port)")
-                .font(.system(.caption, design: .monospaced))
-            Text(process ?? "nothing listening")
-                .font(.caption)
-                .foregroundColor(process != nil ? .primary : .secondary)
+    private var actions: some View {
+        HStack(spacing: AppTheme.spacing8) {
+            Button {
+                setup.refresh()
+                setup.runDiagnostics()
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .disabled(setup.isRunningSetup)
+
+            if setup.hostsConfigured || setup.pfConfigured || setup.tlsCertConfigured {
+                Button(role: .destructive) {
+                    Task { await setup.removeSetup() }
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                }
+                .disabled(setup.isRunningSetup)
+            }
+
             Spacer()
+
+            Button("Done") {
+                onClose()
+            }
+            .keyboardShortcut(.escape, modifiers: [])
+
+            Button {
+                Task { await setup.runSetup() }
+            } label: {
+                if setup.isRunningSetup {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 72)
+                } else {
+                    Label(setup.hostsConfigured && setup.pfConfigured ? "Repair" : "Install", systemImage: "lock.shield")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(setup.isRunningSetup)
         }
+        .padding(AppTheme.spacing16)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .bold()
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
     }
 }
 
 private struct StatusRow: View {
     let title: String
-    let description: String
+    let value: String
     let isComplete: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(spacing: AppTheme.spacing12) {
             Image(systemName: isComplete ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(isComplete ? .green : .secondary)
-                .font(.system(size: 16))
-                .padding(.top, 1)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline).fontWeight(.medium)
-                Text(description).font(.caption).foregroundColor(.secondary)
+                .foregroundStyle(isComplete ? Color.green : .secondary)
+                .frame(width: AppTheme.rowIconWidth)
+
+            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
+                Text(title)
+                    .font(.subheadline)
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
+
             Spacer()
         }
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(AppTheme.spacing12)
+        .background(AppTheme.groupedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+    }
+}
+
+private struct DiagnosticRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: AppTheme.spacing8) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 96, alignment: .leading)
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer()
+        }
     }
 }
