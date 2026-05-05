@@ -5,7 +5,7 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Set by GoLinksApp.init() before applicationDidFinishLaunching fires
+    // Set by CommandShelfApp.init() before applicationDidFinishLaunching fires.
     static var server: HTTPServer?
     static var tlsServer: TLSServer?
     static var pasteStore: PasteStore?
@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - SwiftUI App
 
 @main
-struct GoLinksApp: App {
+struct CommandShelfApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     @StateObject private var store: GoLinkStore
@@ -83,7 +83,11 @@ struct GoLinksApp: App {
 
     private var menuBarLabel: some View {
         ZStack(alignment: .topTrailing) {
-            Image(systemName: "arrow.triangle.branch")
+            Image(nsImage: AppIconImage.menuBar)
+                .resizable()
+                .renderingMode(.template)
+                .interpolation(.high)
+                .frame(width: 18, height: 18)
             if !setup.hostsConfigured || !setup.pfConfigured {
                 Circle()
                     .fill(.orange)
@@ -92,4 +96,22 @@ struct GoLinksApp: App {
             }
         }
     }
+}
+
+private enum AppIconImage {
+    static let menuBar: NSImage = {
+        if
+            let url = Bundle.main.url(forResource: "MenuBarIconTemplate", withExtension: "png"),
+            let image = NSImage(contentsOf: url)
+        {
+            image.size = NSSize(width: 18, height: 18)
+            image.isTemplate = true
+            return image
+        }
+
+        let fallback = NSApp.applicationIconImage ?? NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: nil) ?? NSImage()
+        fallback.size = NSSize(width: 18, height: 18)
+        fallback.isTemplate = true
+        return fallback
+    }()
 }

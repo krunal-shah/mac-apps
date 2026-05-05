@@ -1,14 +1,18 @@
 # ============================================================
-#  Go Links – macOS menu bar app
+#  Command Shelf – macOS menu bar app
 #  Requires: Xcode Command Line Tools (swift, swiftc)
 #  Targets macOS 13 (Ventura)+
 # ============================================================
 
-APP_NAME    = GoLinks
+APP_NAME    = CommandShelf
+DISPLAY_NAME = Command Shelf
+EXECUTABLE  = CommandShelf
 BUILD_DIR   = .build
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
-BINARY      = $(BUILD_DIR)/release/$(APP_NAME)
+BINARY      = $(BUILD_DIR)/release/$(EXECUTABLE)
 INFO_PLIST  = Resources/Info.plist
+ICON_FILE   = Resources/AppIcon.icns
+MENU_BAR_ICON_FILE = Resources/MenuBarIconTemplate.png
 INSTALL_DIR = /Applications
 ZIP_FILE    = $(BUILD_DIR)/$(APP_NAME).app.zip
 
@@ -28,8 +32,10 @@ app: build
 	@rm -rf "$(APP_BUNDLE)"
 	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
 	@mkdir -p "$(APP_BUNDLE)/Contents/Resources"
-	@cp "$(BINARY)"     "$(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)"
+	@cp "$(BINARY)"     "$(APP_BUNDLE)/Contents/MacOS/$(EXECUTABLE)"
 	@cp "$(INFO_PLIST)" "$(APP_BUNDLE)/Contents/Info.plist"
+	@cp "$(ICON_FILE)"  "$(APP_BUNDLE)/Contents/Resources/AppIcon.icns"
+	@cp "$(MENU_BAR_ICON_FILE)"  "$(APP_BUNDLE)/Contents/Resources/MenuBarIconTemplate.png"
 	@# Code-sign ad-hoc so macOS allows the app to run
 	@codesign --force --deep --sign - "$(APP_BUNDLE)" 2>/dev/null || true
 	@echo "✓ $(APP_BUNDLE) ready"
@@ -41,7 +47,7 @@ install: app
 	@echo "→ Installing to $(INSTALL_DIR)/$(APP_NAME).app …"
 	@rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
 	@cp -R "$(APP_BUNDLE)" "$(INSTALL_DIR)/"
-	@echo "✓ Installed. Launch Go Links from /Applications."
+	@echo "✓ Installed. Launch $(DISPLAY_NAME) from /Applications."
 
 # ------------------------------------
 # 4. Run directly (dev mode, no bundle)

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Command Shelf Drift app icon">
+  <defs>
+    <linearGradient id="bg" x1="512" y1="72" x2="512" y2="952" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#121426"/>
+      <stop offset="0.48" stop-color="#2A1D59"/>
+      <stop offset="1" stop-color="#553396"/>
+    </linearGradient>
+
+    <radialGradient id="topViolet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(690 300) rotate(135) scale(520 450)">
+      <stop offset="0" stop-color="#7F6BE8" stop-opacity="0.28"/>
+      <stop offset="0.45" stop-color="#5C43B0" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#100D21" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="lowerViolet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(310 880) rotate(-12) scale(700 340)">
+      <stop offset="0" stop-color="#B19DFF" stop-opacity="0.24"/>
+      <stop offset="0.58" stop-color="#8B73F1" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#8B73F1" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="band1" x1="36" y1="620" x2="1015" y2="880" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#31266C"/>
+      <stop offset="0.50" stop-color="#50379B"/>
+      <stop offset="1" stop-color="#755ED3"/>
+    </linearGradient>
+
+    <linearGradient id="band2" x1="32" y1="690" x2="1019" y2="965" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3F2F86"/>
+      <stop offset="0.52" stop-color="#634CB4"/>
+      <stop offset="1" stop-color="#9179EB"/>
+    </linearGradient>
+
+    <linearGradient id="band3" x1="26" y1="765" x2="1012" y2="1040" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F3DA1"/>
+      <stop offset="0.52" stop-color="#765FD0"/>
+      <stop offset="1" stop-color="#A895F7"/>
+    </linearGradient>
+
+    <linearGradient id="band4" x1="18" y1="840" x2="1000" y2="1115" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#604BB5"/>
+      <stop offset="0.52" stop-color="#856EE0"/>
+      <stop offset="1" stop-color="#B9A8FB"/>
+    </linearGradient>
+
+    <linearGradient id="lip1" x1="40" y1="620" x2="1005" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.35" stop-color="#E6DFFF" stop-opacity="0.13"/>
+      <stop offset="0.72" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="lip2" x1="40" y1="690" x2="1000" y2="805" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.36" stop-color="#E8E1FF" stop-opacity="0.16"/>
+      <stop offset="0.78" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="lip3" x1="35" y1="770" x2="995" y2="875" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.38" stop-color="#E7E0FF" stop-opacity="0.13"/>
+      <stop offset="0.80" stop-color="#FFFFFF" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <radialGradient id="orbFill" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(657 247) rotate(130) scale(110)">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.40" stop-color="#F1EEE7"/>
+      <stop offset="0.72" stop-color="#D3CED5"/>
+      <stop offset="1" stop-color="#9B96A5"/>
+    </radialGradient>
+
+    <radialGradient id="orbGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(678 289) scale(155)">
+      <stop offset="0" stop-color="#F4ECFF" stop-opacity="0.22"/>
+      <stop offset="0.62" stop-color="#D9CBFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#D9CBFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <clipPath id="iconClip">
+      <rect x="72" y="72" width="880" height="880" rx="202" ry="202"/>
+    </clipPath>
+  </defs>
+
+  <!-- Outer soft shadow, drawn as solid translucent shapes for broad SVG compatibility. -->
+  <rect x="82" y="96" width="860" height="860" rx="196" ry="196" fill="#05040B" opacity="0.24"/>
+  <rect x="72" y="72" width="880" height="880" rx="202" ry="202" fill="url(#bg)"/>
+
+  <g clip-path="url(#iconClip)">
+    <rect x="72" y="72" width="880" height="880" rx="202" ry="202" fill="url(#topViolet)"/>
+    <rect x="72" y="72" width="880" height="880" rx="202" ry="202" fill="url(#lowerViolet)"/>
+
+    <!-- Ground shadow. -->
+    <ellipse cx="520" cy="875" rx="610" ry="138" fill="#090715" opacity="0.23"/>
+
+    <!-- Clean layered drift bands. All highlights are filled ribbons, not strokes. -->
+    <path d="M-20 673 C112 615 238 616 365 671 C489 725 585 754 715 734 C826 716 918 666 1046 600 L1046 990 L-20 990 Z" fill="#0E0A22" opacity="0.22"/>
+    <path d="M-20 646 C112 596 240 599 365 652 C489 704 584 735 714 716 C824 700 918 650 1046 584 L1046 966 L-20 966 Z" fill="url(#band1)"/>
+    <path d="M-20 646 C112 596 240 599 365 652 C489 704 584 735 714 716 C824 700 918 650 1046 584 L1046 599 C919 664 827 712 715 729 C582 749 484 718 360 666 C238 614 112 611 -20 661 Z" fill="url(#lip1)"/>
+
+    <path d="M-20 740 C115 681 247 682 379 738 C505 792 601 817 730 794 C840 775 931 720 1046 664 L1046 1032 L-20 1032 Z" fill="#100B25" opacity="0.20"/>
+    <path d="M-20 713 C115 656 248 657 378 713 C504 767 599 795 729 773 C838 754 928 699 1046 640 L1046 1007 L-20 1007 Z" fill="url(#band2)"/>
+    <path d="M-20 713 C115 656 248 657 378 713 C504 767 599 795 729 773 C838 754 928 699 1046 640 L1046 655 C929 714 841 766 730 786 C597 809 501 781 374 728 C246 672 115 671 -20 728 Z" fill="url(#lip2)"/>
+
+    <path d="M-20 812 C119 752 254 752 391 809 C520 863 626 881 755 849 C862 823 948 772 1046 724 L1046 1070 L-20 1070 Z" fill="#120D2A" opacity="0.18"/>
+    <path d="M-20 783 C119 725 255 725 390 783 C519 837 625 856 754 824 C861 798 946 747 1046 696 L1046 1048 L-20 1048 Z" fill="url(#band3)"/>
+    <path d="M-20 783 C119 725 255 725 390 783 C519 837 625 856 754 824 C861 798 946 747 1046 696 L1046 711 C947 762 863 811 756 837 C624 869 516 851 386 797 C252 740 119 740 -20 798 Z" fill="url(#lip3)"/>
+
+    <path d="M-20 862 C117 810 255 812 401 862 C535 908 650 923 778 889 C877 863 958 815 1046 770 L1046 1100 L-20 1100 Z" fill="url(#band4)"/>
+
+    <!-- Orb and glow. -->
+    <circle cx="678" cy="289" r="155" fill="url(#orbGlow)"/>
+    <circle cx="690" cy="315" r="70" fill="#070611" opacity="0.23"/>
+    <circle cx="678" cy="289" r="67" fill="url(#orbFill)"/>
+    <ellipse cx="650" cy="250" rx="31" ry="22" fill="#FFFFFF" opacity="0.42" transform="rotate(-23 650 250)"/>
+    <circle cx="678" cy="289" r="65" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="2"/>
+  </g>
+
+  <rect x="73.5" y="73.5" width="877" height="877" rx="200.5" ry="200.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="3"/>
+</svg>

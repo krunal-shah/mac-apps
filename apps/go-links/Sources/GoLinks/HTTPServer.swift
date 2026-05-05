@@ -4,7 +4,7 @@ import Network
 final class HTTPServer {
     let port: UInt16
     private let router: GoLinkRouter
-    private let queue = DispatchQueue(label: "com.golinks.http-server")
+    private let queue = DispatchQueue(label: "com.krunalshah.commandshelf.http-server")
     private var listener: NWListener?
 
     init(port: UInt16 = AppConfig.httpPort, router: GoLinkRouter) {
@@ -17,7 +17,7 @@ final class HTTPServer {
     func start() {
         guard listener == nil else { return }
         guard let endpointPort = NWEndpoint.Port(rawValue: port) else {
-            print("[GoLinks] Invalid HTTP port: \(port)")
+            print("[CommandShelf] Invalid HTTP port: \(port)")
             return
         }
 
@@ -27,7 +27,7 @@ final class HTTPServer {
         do {
             listener = try NWListener(using: parameters, on: endpointPort)
         } catch {
-            print("[GoLinks] HTTP listener failed: \(error)")
+            print("[CommandShelf] HTTP listener failed: \(error)")
             return
         }
 
@@ -36,12 +36,12 @@ final class HTTPServer {
         }
         listener?.stateUpdateHandler = { state in
             if case .failed(let error) = state {
-                print("[GoLinks] HTTP server failed: \(error)")
+                print("[CommandShelf] HTTP server failed: \(error)")
             }
         }
 
         listener?.start(queue: queue)
-        print("[GoLinks] HTTP server listening on port \(port)")
+        print("[CommandShelf] HTTP server listening on port \(port)")
     }
 
     func stop() {
