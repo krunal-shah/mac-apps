@@ -31,7 +31,7 @@ app: build
 	@rm -rf "$(APP_BUNDLE)"
 	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
 	@mkdir -p "$(APP_BUNDLE)/Contents/Resources"
-	@cp "$(BINARY)"     "$(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)"
+	@cp "$(BINARY)"     "$(APP_BUNDLE)/Contents/MacOS/$(EXECUTABLE)"
 	@cp "$(INFO_PLIST)" "$(APP_BUNDLE)/Contents/Info.plist"
 	@cp "$(ICON_FILE)"  "$(APP_BUNDLE)/Contents/Resources/AppIcon.icns"
 	@# Code-sign ad-hoc so macOS allows the app to run

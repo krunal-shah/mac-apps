@@ -37,15 +37,23 @@ struct MenuBarView: View {
 
     @State private var selectedTool: AppTool = .pastes
     @State private var screen: MenuScreen = .tool(.pastes)
+    @State private var menuOpenToken = 0
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
             toolContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: 520, height: 560)
+        .frame(width: 520, height: 560, alignment: .top)
         .background(Color(NSColor.windowBackgroundColor))
+        .background(
+            MenuWindowActivationObserver {
+                resetForMenuOpen()
+            }
+            .frame(width: 0, height: 0)
+        )
         .animation(.easeInOut(duration: 0.16), value: screen)
     }
 
@@ -141,10 +149,28 @@ struct MenuBarView: View {
         case .tool(let tool):
             switch tool {
             case .links:
-                LinksToolView()
+                LinksToolView(onSwitchTool: switchTool)
             case .pastes:
-                PastesToolView()
+                PastesToolView(openToken: menuOpenToken, onSwitchTool: switchTool)
             }
         }
+    }
+
+    private func resetForMenuOpen() {
+        selectedTool = .pastes
+        screen = .tool(.pastes)
+        menuOpenToken += 1
+    }
+
+    private func switchTool(by offset: Int) {
+        guard screen != .setup,
+              let currentIndex = AppTool.allCases.firstIndex(of: selectedTool)
+        else { return }
+
+        let count = AppTool.allCases.count
+        let nextIndex = (currentIndex + offset + count) % count
+        let nextTool = AppTool.allCases[nextIndex]
+        selectedTool = nextTool
+        screen = .tool(nextTool)
     }
 }

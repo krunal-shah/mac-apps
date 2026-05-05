@@ -56,7 +56,7 @@ struct PasteRow: View {
                 Text(displayText)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
-                    .lineLimit(isPreviewing ? 10 : 2)
+                    .lineLimit(2)
                     .textSelection(.enabled)
 
                 Spacer(minLength: AppTheme.spacing8)

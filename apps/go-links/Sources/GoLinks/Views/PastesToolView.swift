@@ -2,6 +2,9 @@ import SwiftUI
 import AppKit
 
 struct PastesToolView: View {
+    let openToken: Int
+    let onSwitchTool: (Int) -> Void
+
     @EnvironmentObject private var store: PasteStore
     @EnvironmentObject private var setup: SetupManager
     @EnvironmentObject private var clipboardMonitor: ClipboardMonitor
@@ -38,6 +41,7 @@ struct PastesToolView: View {
 
     var body: some View {
         mainContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
             KeyboardCaptureView(focusToken: focusToken, onKeyDown: handleKeyDown)
                 .frame(width: 0, height: 0)
@@ -45,6 +49,9 @@ struct PastesToolView: View {
         .onAppear {
             normalizeSelection()
             focusToken += 1
+        }
+        .onChange(of: openToken) { _ in
+            resetForMenuOpen()
         }
         .onChange(of: filteredPasteIDs) { _ in
             normalizeSelection()
@@ -95,13 +102,30 @@ struct PastesToolView: View {
     }
 
     private var listContent: some View {
-        VStack(spacing: 0) {
-            listControls
-            Divider()
-            pasteContent
-            Divider()
-            footer
+        ZStack {
+            VStack(spacing: 0) {
+                listControls
+                Divider()
+                pasteContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
+                footer
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            if isPreviewing, let selectedPaste {
+                PastePreviewPanel(
+                    paste: selectedPaste,
+                    isCopied: copiedPasteID == selectedPaste.id,
+                    onCopy: { copy(selectedPaste) },
+                    onClose: { isPreviewing = false }
+                )
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
+                .zIndex(1)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeOut(duration: 0.16), value: isPreviewing)
     }
 
     private var listControls: some View {
@@ -119,6 +143,7 @@ struct PastesToolView: View {
             emptyState
         } else if filteredPastes.isEmpty {
             EmptyToolState(icon: "magnifyingglass", title: "No Matches", detail: "No pastes match your search.")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -183,6 +208,12 @@ struct PastesToolView: View {
         guard screen == .list else { return false }
 
         switch event.keyCode {
+        case 123:
+            onSwitchTool(-1)
+            return true
+        case 124:
+            onSwitchTool(1)
+            return true
         case 125:
             moveSelection(by: 1)
             return true
@@ -200,9 +231,18 @@ struct PastesToolView: View {
                 isPreviewing = false
                 return true
             }
+            if !searchText.isEmpty {
+                searchText = ""
+                return true
+            }
             return false
+        case 51:
+            if !searchText.isEmpty {
+                searchText.removeLast()
+            }
+            return true
         default:
-            return false
+            return appendSearchText(from: event)
         }
     }
 
@@ -247,6 +287,34 @@ struct PastesToolView: View {
         selectedPasteID = filteredPastes[nextIndex].id
     }
 
+    private func resetForMenuOpen() {
+        screen = .list
+        searchText = ""
+        selectedPasteID = nil
+        isPreviewing = false
+        copiedPasteID = nil
+        normalizeSelection()
+        focusToken += 1
+    }
+
+    private func appendSearchText(from event: NSEvent) -> Bool {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        guard event.modifierFlags.intersection(blockedModifiers).isEmpty,
+              let characters = event.characters,
+              characters.count == 1,
+              let scalar = characters.unicodeScalars.first,
+              !CharacterSet.controlCharacters.contains(scalar)
+        else {
+            return false
+        }
+
+        guard event.keyCode != 49 else { return false }
+
+        searchText.append(characters)
+        isPreviewing = false
+        return true
+    }
+
     private func copySelectedPaste() {
         normalizeSelection()
         guard let selectedPaste else { return }
@@ -284,5 +352,86 @@ struct PastesToolView: View {
         } else {
             return "Clipboard tracking stopped"
         }
+    }
+}
+
+private struct PastePreviewPanel: View {
+    let paste: PasteItem
+    let isCopied: Bool
+    let onCopy: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: AppTheme.spacing12) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: AppTheme.controlSize, height: AppTheme.controlSize)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: AppTheme.spacing4) {
+                    Text(titleText)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(relativeUpdatedText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy Text", size: AppTheme.compactControlSize, action: onCopy)
+                ToolIconButton(systemName: "xmark", help: "Close Preview", size: AppTheme.compactControlSize, action: onClose)
+            }
+            .padding(.horizontal, AppTheme.spacing16)
+            .frame(height: 56)
+
+            Divider()
+
+            ScrollView {
+                Text(displayBody)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(AppTheme.spacing16)
+            }
+            .background(AppTheme.contentBackground)
+        }
+        .frame(width: 424, height: 360)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+                .stroke(AppTheme.separator.opacity(0.3), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var titleText: String {
+        let title = firstLine
+        return title.isEmpty ? "Untitled Paste" : title
+    }
+
+    private var displayBody: String {
+        paste.body.isEmpty ? "Empty paste" : paste.body
+    }
+
+    private var firstLine: String {
+        paste.body
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private var relativeUpdatedText: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: paste.updatedAt, relativeTo: Date())
     }
 }

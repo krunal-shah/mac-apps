@@ -1,11 +1,14 @@
 import SwiftUI
 
 struct LinksToolView: View {
+    let onSwitchTool: (Int) -> Void
+
     @EnvironmentObject private var store: GoLinkStore
     @EnvironmentObject private var setup: SetupManager
 
     @State private var screen: Screen = .list
     @State private var searchText = ""
+    @State private var focusToken = 0
 
     private enum Screen: Equatable {
         case list
@@ -23,6 +26,14 @@ struct LinksToolView: View {
 
     var body: some View {
         mainContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(
+                KeyboardCaptureView(focusToken: focusToken, onKeyDown: handleKeyDown)
+                    .frame(width: 0, height: 0)
+            )
+            .onAppear {
+                focusToken += 1
+            }
     }
 
     private var editToolBar: some View {
@@ -99,9 +110,11 @@ struct LinksToolView: View {
             listControls
             Divider()
             linkContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             footer
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var listControls: some View {
@@ -129,6 +142,7 @@ struct LinksToolView: View {
             emptyState
         } else if filteredLinks.isEmpty {
             EmptyToolState(icon: "magnifyingglass", title: "No Matches", detail: "No links match your search.")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -186,6 +200,47 @@ struct LinksToolView: View {
         .padding(.horizontal, AppTheme.spacing12)
         .frame(height: 32)
         .background(AppTheme.groupedBackground)
+    }
+
+    private func handleKeyDown(_ event: NSEvent) -> Bool {
+        guard screen == .list else { return false }
+
+        switch event.keyCode {
+        case 123:
+            onSwitchTool(-1)
+            return true
+        case 124:
+            onSwitchTool(1)
+            return true
+        case 53:
+            if !searchText.isEmpty {
+                searchText = ""
+                return true
+            }
+            return false
+        case 51:
+            if !searchText.isEmpty {
+                searchText.removeLast()
+            }
+            return true
+        default:
+            return appendSearchText(from: event)
+        }
+    }
+
+    private func appendSearchText(from event: NSEvent) -> Bool {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        guard event.modifierFlags.intersection(blockedModifiers).isEmpty,
+              let characters = event.characters,
+              characters.count == 1,
+              let scalar = characters.unicodeScalars.first,
+              !CharacterSet.controlCharacters.contains(scalar)
+        else {
+            return false
+        }
+
+        searchText.append(characters)
+        return true
     }
 
     private var statusText: String {

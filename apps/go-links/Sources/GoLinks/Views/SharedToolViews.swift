@@ -146,3 +146,63 @@ final class KeyCaptureNSView: NSView {
         super.keyDown(with: event)
     }
 }
+
+struct MenuWindowActivationObserver: NSViewRepresentable {
+    let onOpen: () -> Void
+
+    func makeNSView(context: Context) -> MenuWindowActivationNSView {
+        let view = MenuWindowActivationNSView()
+        view.onOpen = onOpen
+        return view
+    }
+
+    func updateNSView(_ nsView: MenuWindowActivationNSView, context: Context) {
+        nsView.onOpen = onOpen
+    }
+}
+
+final class MenuWindowActivationNSView: NSView {
+    var onOpen: (() -> Void)?
+
+    private var isOpen = false
+    private var observers: [NSObjectProtocol] = []
+
+    deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        installObservers()
+
+        if window?.isKeyWindow == true {
+            notifyOpenIfNeeded()
+        }
+    }
+
+    private func installObservers() {
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers.removeAll()
+
+        guard let window else { return }
+        let center = NotificationCenter.default
+
+        observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+            self?.notifyOpenIfNeeded()
+        })
+
+        observers.append(center.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
+            self?.isOpen = false
+        })
+
+        observers.append(center.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
+            self?.isOpen = false
+        })
+    }
+
+    private func notifyOpenIfNeeded() {
+        guard !isOpen else { return }
+        isOpen = true
+        onOpen?()
+    }
+}
