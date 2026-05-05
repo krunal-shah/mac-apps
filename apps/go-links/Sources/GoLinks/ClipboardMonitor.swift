@@ -8,7 +8,7 @@ final class ClipboardMonitor: ObservableObject {
 
     private let pasteboard: NSPasteboard
     private var lastChangeCount: Int
-    private var timer: Timer?
+    private var pollingTask: Task<Void, Never>?
     private weak var store: PasteStore?
 
     init(pasteboard: NSPasteboard = .general) {
@@ -20,24 +20,24 @@ final class ClipboardMonitor: ObservableObject {
         self.store = store
         captureCurrentString()
 
-        guard timer == nil else {
+        guard pollingTask == nil else {
             isRunning = true
             return
         }
 
-        let timer = Timer(timeInterval: 0.75, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        pollingTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 750_000_000)
+                guard !Task.isCancelled else { return }
                 self?.poll()
             }
         }
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
         isRunning = true
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
+        pollingTask?.cancel()
+        pollingTask = nil
         isRunning = false
     }
 
