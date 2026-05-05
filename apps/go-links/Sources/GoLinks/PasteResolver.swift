@@ -1,7 +1,7 @@
 import Foundation
 
 final class PasteResolver {
-    private let queue = DispatchQueue(label: "com.golinks.paste-resolver", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "com.krunalshah.commandshelf.paste-resolver", attributes: .concurrent)
     private var orderedPastes: [PasteItem] = []
     private var pastesByID: [String: PasteItem] = [:]
 

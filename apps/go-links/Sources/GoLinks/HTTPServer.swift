@@ -4,7 +4,7 @@ import Network
 final class HTTPServer {
     let port: UInt16
     private let router: GoLinkRouter
-    private let queue = DispatchQueue(label: "com.golinks.http-server")
+    private let queue = DispatchQueue(label: "com.krunalshah.commandshelf.http-server")
     private var listener: NWListener?
 
     init(port: UInt16 = AppConfig.httpPort, router: GoLinkRouter) {

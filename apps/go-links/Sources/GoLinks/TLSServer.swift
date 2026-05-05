@@ -14,7 +14,7 @@ final class TLSServer {
     // MARK: - State
 
     private let router: GoLinkRouter
-    private let queue = DispatchQueue(label: "com.golinks.https-server")
+    private let queue = DispatchQueue(label: "com.krunalshah.commandshelf.https-server")
     private var listener: NWListener?
 
     init(router: GoLinkRouter) {

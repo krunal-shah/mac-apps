@@ -6,7 +6,7 @@
 
 APP_NAME    = CommandShelf
 DISPLAY_NAME = Command Shelf
-EXECUTABLE  = GoLinks
+EXECUTABLE  = CommandShelf
 BUILD_DIR   = .build
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 BINARY      = $(BUILD_DIR)/release/$(EXECUTABLE)

@@ -128,10 +128,12 @@ mac-apps/
     ├── Package.swift              Swift Package Manager manifest
     ├── Makefile                   Build / install helpers
     ├── Resources/
+    │   ├── AppIcon.icns           Dock/Finder app icon
+    │   ├── MenuBarIconTemplate.png Monochrome menu bar icon
     │   └── Info.plist             App bundle metadata
     └── Sources/GoLinks/
         ├── AppConfig.swift        Shared app constants and routes
-        ├── GoLinksApp.swift       @main – App + AppDelegate
+        ├── CommandShelfApp.swift  @main – App + AppDelegate
         ├── GoLinkStore.swift      Link model + UserDefaults persistence
         ├── PasteStore.swift       Paste model + UserDefaults persistence
         ├── GoLinkRouter.swift     Local HTTP/HTTPS route handling
