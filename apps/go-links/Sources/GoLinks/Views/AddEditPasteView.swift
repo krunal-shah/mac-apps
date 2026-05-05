@@ -6,10 +6,8 @@ enum PasteFormMode {
 
     var submitLabel: String {
         switch self {
-        case .add:
-            return "Add"
-        case .edit:
-            return "Save"
+        case .add:  return "Add"
+        case .edit: return "Save"
         }
     }
 }
@@ -47,10 +45,11 @@ struct AddEditPasteView: View {
         VStack(spacing: 0) {
             form
             Spacer(minLength: 0)
-            Divider()
+            Divider().background(AppTheme.shelfRule)
             actions
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(AppTheme.shelfBase)
         .onAppear {
             if case .add = mode, content.isEmpty {
                 content = Clipboard.string ?? ""
@@ -61,100 +60,107 @@ struct AddEditPasteView: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacing16) {
-            fieldLabel("Title", systemImage: "textformat")
+            VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+                FieldLabel("Title")
 
-            TextField("Untitled Paste", text: $title)
-                .textFieldStyle(.plain)
-                .focused($focusedField, equals: .title)
-                .onSubmit { focusedField = .body }
-                .padding(.horizontal, AppTheme.spacing12)
-                .frame(height: 40)
-                .background(AppTheme.contentBackground)
-                .overlay(inputBorder(hasError: false))
-
-            HStack(spacing: AppTheme.spacing8) {
-                fieldLabel("Content", systemImage: "doc.text")
-
-                Spacer()
-
-                Button {
-                    content = Clipboard.string ?? ""
-                    bodyError = nil
-                    focusedField = .body
-                } label: {
-                    Label("Clipboard", systemImage: "doc.on.clipboard")
-                }
-                .font(.caption)
-                .buttonStyle(.plain)
+                TextField("Untitled paste", text: $title)
+                    .font(AppTheme.sans(14, weight: .medium))
+                    .foregroundStyle(AppTheme.shelfInk)
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .title)
+                    .onSubmit { focusedField = .body }
+                    .padding(.horizontal, AppTheme.spacing12)
+                    .frame(height: 40)
+                    .background(inputBackground(hasError: false))
             }
 
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $content)
-                    .font(.system(.body, design: .monospaced))
-                    .focused($focusedField, equals: .body)
-                    .onChange(of: content) { _ in bodyError = nil }
-                    .padding(AppTheme.spacing8)
+            VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+                HStack(spacing: AppTheme.spacing8) {
+                    FieldLabel("Content")
 
-                if content.isEmpty {
-                    Text("Paste text, code, notes, or logs")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, AppTheme.spacing12)
-                        .padding(.vertical, AppTheme.spacing16)
-                        .allowsHitTesting(false)
-                }
-            }
-            .frame(minHeight: 250, maxHeight: .infinity)
-            .background(AppTheme.contentBackground)
-            .overlay(inputBorder(hasError: bodyError != nil))
+                    Spacer()
 
-            HStack(alignment: .firstTextBaseline) {
-                if let bodyError {
-                    errorText(bodyError)
+                    Button {
+                        content = Clipboard.string ?? ""
+                        bodyError = nil
+                        focusedField = .body
+                    } label: {
+                        HStack(spacing: AppTheme.spacing4) {
+                            Image(systemName: "doc.on.clipboard")
+                                .font(.system(size: 10))
+                            Text("From clipboard")
+                                .font(AppTheme.sans(11, weight: .medium))
+                        }
+                        .foregroundStyle(AppTheme.shelfInkSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Replace content with the current clipboard")
                 }
 
-                Spacer()
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $content)
+                        .font(AppTheme.mono(12))
+                        .foregroundStyle(AppTheme.shelfInk)
+                        .scrollContentBackground(.hidden)
+                        .focused($focusedField, equals: .body)
+                        .onChange(of: content) { _ in bodyError = nil }
+                        .padding(AppTheme.spacing8)
 
-                Text("\(content.count) character\(content.count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    if content.isEmpty {
+                        Text("Paste text, code, notes, or logs")
+                            .font(AppTheme.mono(12))
+                            .foregroundStyle(AppTheme.shelfInkTertiary)
+                            .padding(.horizontal, AppTheme.spacing12)
+                            .padding(.vertical, AppTheme.spacing12)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .frame(minHeight: 280, maxHeight: .infinity)
+                .background(inputBackground(hasError: bodyError != nil))
+
+                HStack(alignment: .firstTextBaseline) {
+                    if let bodyError {
+                        errorText(bodyError)
+                    }
+
+                    Spacer()
+
+                    Text("\(content.count) characters")
+                        .font(AppTheme.sans(11, weight: .regular))
+                        .foregroundStyle(AppTheme.shelfInkTertiary)
+                }
             }
         }
-        .padding(AppTheme.spacing16)
+        .padding(AppTheme.spacing20)
     }
 
     private var actions: some View {
         HStack(spacing: AppTheme.spacing8) {
             Spacer()
-            Button("Cancel") {
+
+            FormButton(label: "Cancel", style: .secondary) {
                 onClose()
             }
             .keyboardShortcut(.escape, modifiers: [])
 
-            Button(mode.submitLabel) {
+            FormButton(label: mode.submitLabel, style: .primary) {
                 submit()
             }
             .keyboardShortcut(.return, modifiers: .command)
-            .buttonStyle(.borderedProminent)
         }
         .padding(AppTheme.spacing16)
+        .background(AppTheme.shelfBase)
     }
 
-    private func fieldLabel(_ value: String, systemImage: String) -> some View {
-        Label(value, systemImage: systemImage)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-    }
-
-    private func inputBorder(hasError: Bool) -> some View {
-        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
-            .stroke(hasError ? Color.red : AppTheme.separator.opacity(0.3), lineWidth: 1)
+    private func inputBackground(hasError: Bool) -> some View {
+        RoundedRectangle(cornerRadius: AppTheme.radiusMedium, style: .continuous)
+            .fill(hasError ? AppTheme.shelfDanger.opacity(0.08) : AppTheme.shelfAccentSoft)
     }
 
     private func errorText(_ message: String) -> some View {
         Text(message)
-            .font(.caption)
-            .foregroundStyle(.red)
+            .font(AppTheme.sans(11, weight: .medium))
+            .foregroundStyle(AppTheme.shelfDanger)
             .fixedSize(horizontal: false, vertical: true)
     }
 

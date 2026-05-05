@@ -41,47 +41,22 @@ struct PastesToolView: View {
 
     var body: some View {
         mainContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(
-            KeyboardCaptureView(focusToken: focusToken, onKeyDown: handleKeyDown)
-                .frame(width: 0, height: 0)
-        )
-        .onAppear {
-            normalizeSelection()
-            focusToken += 1
-        }
-        .onChange(of: openToken) { _ in
-            resetForMenuOpen()
-        }
-        .onChange(of: filteredPasteIDs) { _ in
-            normalizeSelection()
-        }
-    }
-
-    private var editToolBar: some View {
-        HStack(spacing: AppTheme.spacing12) {
-            ToolIconButton(systemName: "chevron.left", help: "Back", size: AppTheme.compactControlSize) {
-                screen = .list
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(AppTheme.shelfBase)
+            .background(
+                KeyboardCaptureView(focusToken: focusToken, onKeyDown: handleKeyDown)
+                    .frame(width: 0, height: 0)
+            )
+            .onAppear {
+                normalizeSelection()
+                focusToken += 1
             }
-
-            VStack(alignment: .leading, spacing: AppTheme.spacing4) {
-                Text("Edit Paste")
-                    .font(.subheadline.weight(.semibold))
-                Text(editSubtitleText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            .onChange(of: openToken) { _ in
+                resetForMenuOpen()
             }
-
-            Spacer()
-        }
-        .padding(.horizontal, AppTheme.spacing16)
-        .frame(height: 44)
-        .background(AppTheme.appBackground)
-    }
-
-    private var editSubtitleText: String {
-        guard case .edit(let paste) = screen else { return "" }
-        return paste.title
+            .onChange(of: filteredPasteIDs) { _ in
+                normalizeSelection()
+            }
     }
 
     @ViewBuilder
@@ -92,7 +67,7 @@ struct PastesToolView: View {
         case .edit(let paste):
             VStack(spacing: 0) {
                 editToolBar
-                Divider()
+                Divider().background(AppTheme.shelfRule)
                 AddEditPasteView(mode: .edit(paste)) {
                     screen = .list
                 }
@@ -101,14 +76,35 @@ struct PastesToolView: View {
         }
     }
 
+    private var editToolBar: some View {
+        HStack(spacing: AppTheme.spacing10) {
+            ToolIconButton(systemName: "chevron.left", help: "Back", size: AppTheme.controlSize) {
+                screen = .list
+            }
+
+            Text(editTitleText)
+                .font(AppTheme.sans(15, weight: .semibold))
+                .foregroundStyle(AppTheme.shelfInk)
+                .lineLimit(1)
+
+            Spacer()
+        }
+        .padding(.horizontal, AppTheme.spacing16)
+        .frame(height: AppTheme.headerHeight)
+        .background(AppTheme.shelfBase)
+    }
+
+    private var editTitleText: String {
+        guard case .edit(let paste) = screen else { return "Edit paste" }
+        return paste.title.isEmpty ? "Edit paste" : paste.title
+    }
+
     private var listContent: some View {
         ZStack {
             VStack(spacing: 0) {
                 listControls
-                Divider()
                 pasteContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
                 footer
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -124,7 +120,7 @@ struct PastesToolView: View {
                 .zIndex(1)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.easeOut(duration: 0.16), value: isPreviewing)
     }
 
@@ -132,9 +128,9 @@ struct PastesToolView: View {
         HStack(spacing: AppTheme.spacing8) {
             SearchField(text: $searchText, placeholder: "Search pastes")
         }
-        .padding(.horizontal, AppTheme.spacing12)
-        .padding(.vertical, AppTheme.spacing8)
-        .background(AppTheme.appBackground)
+        .padding(.horizontal, AppTheme.spacing16)
+        .frame(height: AppTheme.listControlsHeight)
+        .background(AppTheme.shelfBase)
     }
 
     @ViewBuilder
@@ -142,12 +138,12 @@ struct PastesToolView: View {
         if store.pastes.isEmpty {
             emptyState
         } else if filteredPastes.isEmpty {
-            EmptyToolState(icon: "magnifyingglass", title: "No Matches", detail: "No pastes match your search.")
+            EmptyToolState(icon: "magnifyingglass", title: "No matches", detail: "No pastes match your search.")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.spacing4) {
+                    LazyVStack(spacing: 2) {
                         ForEach(filteredPastes) { paste in
                             PasteRow(
                                 paste: paste,
@@ -163,70 +159,77 @@ struct PastesToolView: View {
                             .id(paste.id)
                         }
                     }
-                    .padding(AppTheme.spacing8)
+                    .padding(.horizontal, AppTheme.spacing8)
+                    .padding(.vertical, AppTheme.spacing6)
                 }
                 .onChange(of: selectedPasteID) { id in
                     guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.16)) {
+                    withAnimation(AppTheme.selectAnimation) {
                         proxy.scrollTo(id, anchor: .center)
                     }
                 }
             }
-            .background(AppTheme.contentBackground)
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: AppTheme.spacing16) {
-            EmptyToolState(icon: "doc.on.clipboard", title: "No Pastes", detail: "Copy text anywhere to add it here.")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppTheme.spacing20)
+        EmptyToolState(icon: "doc.on.clipboard", title: "No pastes yet", detail: "Copy text anywhere to add it here.")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var footer: some View {
-        HStack(spacing: AppTheme.spacing8) {
-            StatusDot(color: setup.hostsConfigured && setup.pfActiveInKernel && clipboardMonitor.isRunning ? .green : .orange)
-
-            Text(statusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: AppTheme.spacing12) {
+            KbdGlyph(symbol: "↵", label: "Copy")
+            KbdGlyph(symbol: "␣", label: "Preview")
+            KbdGlyph(symbol: "⌘⌫", label: "Delete")
 
             Spacer()
 
-            Text("\(filteredPastes.count) shown")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+            StatusDot(color: setupHealthy ? AppTheme.shelfReady : AppTheme.shelfWarn)
         }
-        .padding(.horizontal, AppTheme.spacing12)
-        .frame(height: 32)
-        .background(AppTheme.groupedBackground)
+        .padding(.horizontal, AppTheme.spacing16)
+        .frame(height: AppTheme.footerHeight)
     }
+
+    private var setupHealthy: Bool {
+        setup.hostsConfigured && setup.pfActiveInKernel && clipboardMonitor.isRunning
+    }
+
+    // MARK: Keyboard
 
     private func handleKeyDown(_ event: NSEvent) -> Bool {
         guard screen == .list else { return false }
 
         switch event.keyCode {
-        case 123:
+        case 123:  // left arrow
             onSwitchTool(-1)
             return true
-        case 124:
+        case 124:  // right arrow
             onSwitchTool(1)
             return true
-        case 125:
+        case 125:  // down arrow
             moveSelection(by: 1)
             return true
-        case 126:
+        case 126:  // up arrow
             moveSelection(by: -1)
             return true
-        case 49:
+        case 49:  // space
             togglePreviewForSelection()
             return true
-        case 36, 76:
+        case 36, 76:  // return
             copySelectedPaste()
             return true
-        case 53:
+        case 117, 51:  // delete forward / backward
+            if event.keyCode == 117 || event.modifierFlags.contains(.command) {
+                deleteSelected()
+                return true
+            }
+            if !searchText.isEmpty {
+                searchText.removeLast()
+                return true
+            }
+            return true
+        case 53:  // esc
             if isPreviewing {
                 isPreviewing = false
                 return true
@@ -235,11 +238,7 @@ struct PastesToolView: View {
                 searchText = ""
                 return true
             }
-            return false
-        case 51:
-            if !searchText.isEmpty {
-                searchText.removeLast()
-            }
+            NSApp.keyWindow?.close()
             return true
         default:
             return appendSearchText(from: event)
@@ -321,6 +320,11 @@ struct PastesToolView: View {
         copy(selectedPaste)
     }
 
+    private func deleteSelected() {
+        guard let selectedPaste else { return }
+        delete(selectedPaste)
+    }
+
     private func copy(_ paste: PasteItem) {
         Clipboard.copy(paste.body)
         copiedPasteID = paste.id
@@ -338,22 +342,9 @@ struct PastesToolView: View {
             normalizeSelection()
         }
     }
-
-    private var statusText: String {
-        guard setup.hostsConfigured && setup.pfActiveInKernel else {
-            if setup.hostsConfigured && setup.pfConfigured {
-                return "Setup needs refresh"
-            }
-            return "Setup required"
-        }
-
-        if clipboardMonitor.isRunning {
-            return "Tracking clipboard"
-        } else {
-            return "Clipboard tracking stopped"
-        }
-    }
 }
+
+// MARK: - Preview panel
 
 private struct PastePreviewPanel: View {
     let paste: PasteItem
@@ -363,56 +354,48 @@ private struct PastePreviewPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: AppTheme.spacing12) {
-                Image(systemName: "doc.text.magnifyingglass")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .frame(width: AppTheme.controlSize, height: AppTheme.controlSize)
-                    .accessibilityHidden(true)
+            HStack(spacing: AppTheme.spacing10) {
+                Text(titleText)
+                    .font(AppTheme.sans(15, weight: .semibold))
+                    .foregroundStyle(AppTheme.shelfInk)
+                    .lineLimit(1)
 
-                VStack(alignment: .leading, spacing: AppTheme.spacing4) {
-                    Text(titleText)
-                        .font(.headline)
-                        .lineLimit(1)
-                    Text(relativeUpdatedText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(relativeUpdatedText)
+                    .font(AppTheme.sans(11, weight: .regular))
+                    .foregroundStyle(AppTheme.shelfInkTertiary)
 
                 Spacer()
 
-                ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy Text", size: AppTheme.compactControlSize, action: onCopy)
-                ToolIconButton(systemName: "xmark", help: "Close Preview", size: AppTheme.compactControlSize, action: onClose)
+                ToolIconButton(systemName: isCopied ? "checkmark" : "doc.on.doc", help: "Copy", tint: isCopied ? AppTheme.shelfReady : AppTheme.shelfInkSecondary, size: AppTheme.compactControlSize, action: onCopy)
+                ToolIconButton(systemName: "xmark", help: "Close", size: AppTheme.compactControlSize, action: onClose)
             }
             .padding(.horizontal, AppTheme.spacing16)
-            .frame(height: 56)
-
-            Divider()
+            .frame(height: 50)
 
             ScrollView {
                 Text(displayBody)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.primary)
+                    .font(AppTheme.mono(12))
+                    .foregroundStyle(AppTheme.shelfInk)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(AppTheme.spacing16)
             }
-            .background(AppTheme.contentBackground)
+            .background(AppTheme.shelfPaper)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusLarge, style: .continuous))
+            .padding(.horizontal, AppTheme.spacing10)
+            .padding(.bottom, AppTheme.spacing10)
         }
-        .frame(width: 424, height: 360)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
-                .stroke(AppTheme.separator.opacity(0.3), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
+        .frame(width: 440, height: 400)
+        .background(AppTheme.shelfBase)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusPanel, style: .continuous))
+        .shadow(color: AppTheme.shelfInk.opacity(0.14), radius: 28, y: 14)
+        .shadow(color: AppTheme.shelfInk.opacity(0.06), radius: 4, y: 1)
         .accessibilityElement(children: .contain)
     }
 
     private var titleText: String {
         let title = firstLine
-        return title.isEmpty ? "Untitled Paste" : title
+        return title.isEmpty ? "Untitled" : title
     }
 
     private var displayBody: String {
