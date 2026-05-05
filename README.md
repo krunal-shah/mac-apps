@@ -6,7 +6,7 @@ This repository contains small macOS apps.
 
 | App | Description |
 |---|---|
-| [Go Links](apps/go-links) | Menu bar app for local `go/...` shortcuts and `go/paste/...` snippets. |
+| [Command Shelf](apps/go-links) | Menu bar utility shelf for local `go/...` shortcuts and clipboard-backed pastes. |
 
 ## Build
 
@@ -29,13 +29,13 @@ make open
 
 ## Releases
 
-Pushing a `go-links-v*` tag builds `GoLinks.app.zip` on GitHub Actions and
+Pushing a `command-shelf-v*` tag builds `CommandShelf.app.zip` on GitHub Actions and
 attaches it to a GitHub Release:
 
 ```bash
-git tag go-links-v1.0.0
-git push origin go-links-v1.0.0
+git tag command-shelf-v1.0.0
+git push origin command-shelf-v1.0.0
 ```
 
-You can also run the `Go Links Release` workflow manually in GitHub Actions and
+You can also run the `Command Shelf Release` workflow manually in GitHub Actions and
 provide the release tag.

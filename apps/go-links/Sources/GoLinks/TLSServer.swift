@@ -27,13 +27,13 @@ final class TLSServer {
         guard listener == nil else { return }
 
         guard let identity = loadIdentity() else {
-            print("[GoLinks] TLS identity not found; HTTPS is disabled until setup runs")
+            print("[CommandShelf] TLS identity not found; HTTPS is disabled until setup runs")
             return
         }
 
         let tlsOpts = NWProtocolTLS.Options()
         guard let localIdentity = sec_identity_create(identity) else {
-            print("[GoLinks] TLS identity conversion failed")
+            print("[CommandShelf] TLS identity conversion failed")
             return
         }
         sec_protocol_options_set_local_identity(tlsOpts.securityProtocolOptions, localIdentity)
@@ -44,7 +44,7 @@ final class TLSServer {
         do {
             listener = try NWListener(using: params, on: Self.port)
         } catch {
-            print("[GoLinks] TLS listener init failed: \(error)")
+            print("[CommandShelf] TLS listener init failed: \(error)")
             return
         }
 
@@ -53,11 +53,11 @@ final class TLSServer {
         }
         listener?.stateUpdateHandler = { state in
             if case .failed(let err) = state {
-                print("[GoLinks] TLS server error: \(err)")
+                print("[CommandShelf] TLS server error: \(err)")
             }
         }
         listener?.start(queue: queue)
-        print("[GoLinks] HTTPS server listening on port \(Self.port.rawValue)")
+        print("[CommandShelf] HTTPS server listening on port \(Self.port.rawValue)")
     }
 
     func stop() {
