@@ -6,19 +6,15 @@ enum LinkFormMode {
 
     var title: String {
         switch self {
-        case .add:
-            return "Add Link"
-        case .edit:
-            return "Edit Link"
+        case .add:  return "Add Link"
+        case .edit: return "Edit Link"
         }
     }
 
     var submitLabel: String {
         switch self {
-        case .add:
-            return "Add"
-        case .edit:
-            return "Save"
+        case .add:  return "Add"
+        case .edit: return "Save"
         }
     }
 
@@ -58,93 +54,97 @@ struct AddEditLinkView: View {
         VStack(spacing: 0) {
             form
             Spacer(minLength: 0)
-            Divider()
+            Divider().background(AppTheme.shelfRule)
             actions
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(AppTheme.shelfBase)
         .onAppear {
             focusedField = .name
         }
     }
 
     private var form: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing16) {
-            fieldLabel("Shortcut", systemImage: "textformat")
+        VStack(alignment: .leading, spacing: AppTheme.spacing20) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+                FieldLabel("Shortcut")
 
-            HStack(spacing: 0) {
-                Text("\(AppConfig.hostName)/")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 48)
+                HStack(spacing: 0) {
+                    Text("\(AppConfig.hostName)/")
+                        .font(AppTheme.mono(14, weight: .regular))
+                        .foregroundStyle(AppTheme.shelfInkTertiary)
+                        .padding(.leading, AppTheme.spacing12)
 
-                TextField("docs/search", text: $shortName)
-                    .font(.system(.body, design: .monospaced))
-                    .textFieldStyle(.plain)
-                    .focused($focusedField, equals: .name)
-                    .onChange(of: shortName) { _ in nameError = nil }
-                    .onSubmit { focusedField = .url }
-            }
-            .padding(.horizontal, AppTheme.spacing12)
-            .frame(height: 40)
-            .background(AppTheme.contentBackground)
-            .overlay(inputBorder(hasError: nameError != nil))
-
-            if let nameError {
-                errorText(nameError)
-            }
-
-            fieldLabel("Destination", systemImage: "globe")
-                .help("Use {path} to insert the remaining path after the shortcut.")
-
-            TextField("https://google.com/search?q={path}", text: $destinationURL)
-                .textFieldStyle(.plain)
-                .focused($focusedField, equals: .url)
-                .onChange(of: destinationURL) { _ in urlError = nil }
-                .onSubmit { submit() }
-                .padding(.horizontal, AppTheme.spacing12)
+                    TextField("docs", text: $shortName)
+                        .font(AppTheme.mono(14, weight: .medium))
+                        .foregroundStyle(AppTheme.shelfInk)
+                        .textFieldStyle(.plain)
+                        .focused($focusedField, equals: .name)
+                        .onChange(of: shortName) { _ in nameError = nil }
+                        .onSubmit { focusedField = .url }
+                        .padding(.trailing, AppTheme.spacing12)
+                }
                 .frame(height: 40)
-                .background(AppTheme.contentBackground)
-                .overlay(inputBorder(hasError: urlError != nil))
+                .background(inputBackground(hasError: nameError != nil))
 
-            if let urlError {
-                errorText(urlError)
+                if let nameError {
+                    errorText(nameError)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+                FieldLabel("Destination")
+
+                TextField("https://google.com/search?q={path}", text: $destinationURL)
+                    .font(AppTheme.sans(14, weight: .regular))
+                    .foregroundStyle(AppTheme.shelfInk)
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .url)
+                    .onChange(of: destinationURL) { _ in urlError = nil }
+                    .onSubmit { submit() }
+                    .padding(.horizontal, AppTheme.spacing12)
+                    .frame(height: 40)
+                    .background(inputBackground(hasError: urlError != nil))
+
+                Text("Use {path} to insert the rest of the URL after the shortcut.")
+                    .font(AppTheme.sans(11))
+                    .foregroundStyle(AppTheme.shelfInkTertiary)
+
+                if let urlError {
+                    errorText(urlError)
+                }
             }
         }
-        .padding(AppTheme.spacing16)
+        .padding(AppTheme.spacing20)
     }
 
     private var actions: some View {
         HStack(spacing: AppTheme.spacing8) {
             Spacer()
-            Button("Cancel") {
+
+            FormButton(label: "Cancel", style: .secondary) {
                 onClose()
             }
             .keyboardShortcut(.escape, modifiers: [])
 
-            Button(mode.submitLabel) {
+            FormButton(label: mode.submitLabel, style: .primary) {
                 submit()
             }
             .keyboardShortcut(.return, modifiers: .command)
-            .buttonStyle(.borderedProminent)
         }
         .padding(AppTheme.spacing16)
+        .background(AppTheme.shelfBase)
     }
 
-    private func fieldLabel(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-    }
-
-    private func inputBorder(hasError: Bool) -> some View {
-        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
-            .stroke(hasError ? Color.red : AppTheme.separator.opacity(0.3), lineWidth: 1)
+    private func inputBackground(hasError: Bool) -> some View {
+        RoundedRectangle(cornerRadius: AppTheme.radiusMedium, style: .continuous)
+            .fill(hasError ? AppTheme.shelfDanger.opacity(0.08) : AppTheme.shelfAccentSoft)
     }
 
     private func errorText(_ message: String) -> some View {
         Text(message)
-            .font(.caption)
-            .foregroundStyle(.red)
+            .font(AppTheme.sans(11, weight: .medium))
+            .foregroundStyle(AppTheme.shelfDanger)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -181,6 +181,48 @@ struct AddEditLinkView: View {
             nameError = GoLinkValidationError.duplicateName.localizedDescription
         } catch {
             urlError = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Form button
+
+struct FormButton: View {
+    enum Style { case primary, secondary }
+
+    let label: String
+    let style: Style
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(AppTheme.sans(12, weight: .medium))
+                .foregroundStyle(textColor)
+                .padding(.horizontal, AppTheme.spacing16)
+                .frame(height: 32)
+                .background(
+                    Capsule(style: .continuous).fill(backgroundColor)
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(AppTheme.hoverAnimation) { isHovering = hovering }
+        }
+    }
+
+    private var textColor: Color {
+        AppTheme.shelfInk
+    }
+
+    private var backgroundColor: Color {
+        switch style {
+        case .primary:
+            return isHovering ? AppTheme.shelfRuleStrong : AppTheme.shelfAccentSoft
+        case .secondary:
+            return isHovering ? AppTheme.shelfRule.opacity(0.7) : .clear
         }
     }
 }
