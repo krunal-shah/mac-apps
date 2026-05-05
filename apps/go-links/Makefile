@@ -12,6 +12,7 @@ APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 BINARY      = $(BUILD_DIR)/release/$(EXECUTABLE)
 INFO_PLIST  = Resources/Info.plist
 ICON_FILE   = Resources/AppIcon.icns
+MENU_BAR_ICON_FILE = Resources/MenuBarIconTemplate.png
 INSTALL_DIR = /Applications
 ZIP_FILE    = $(BUILD_DIR)/$(APP_NAME).app.zip
 
@@ -34,6 +35,7 @@ app: build
 	@cp "$(BINARY)"     "$(APP_BUNDLE)/Contents/MacOS/$(EXECUTABLE)"
 	@cp "$(INFO_PLIST)" "$(APP_BUNDLE)/Contents/Info.plist"
 	@cp "$(ICON_FILE)"  "$(APP_BUNDLE)/Contents/Resources/AppIcon.icns"
+	@cp "$(MENU_BAR_ICON_FILE)"  "$(APP_BUNDLE)/Contents/Resources/MenuBarIconTemplate.png"
 	@# Code-sign ad-hoc so macOS allows the app to run
 	@codesign --force --deep --sign - "$(APP_BUNDLE)" 2>/dev/null || true
 	@echo "✓ $(APP_BUNDLE) ready"
