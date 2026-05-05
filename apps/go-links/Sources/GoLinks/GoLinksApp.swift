@@ -83,7 +83,11 @@ struct GoLinksApp: App {
 
     private var menuBarLabel: some View {
         ZStack(alignment: .topTrailing) {
-            Image(systemName: "square.grid.2x2")
+            Image(nsImage: AppIconImage.menuBar)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 18, height: 18)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             if !setup.hostsConfigured || !setup.pfConfigured {
                 Circle()
                     .fill(.orange)
@@ -92,4 +96,20 @@ struct GoLinksApp: App {
             }
         }
     }
+}
+
+private enum AppIconImage {
+    static let menuBar: NSImage = {
+        if
+            let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+            let image = NSImage(contentsOf: url)
+        {
+            image.size = NSSize(width: 18, height: 18)
+            return image
+        }
+
+        let fallback = NSApp.applicationIconImage ?? NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: nil) ?? NSImage()
+        fallback.size = NSSize(width: 18, height: 18)
+        return fallback
+    }()
 }
