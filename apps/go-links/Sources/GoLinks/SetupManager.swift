@@ -13,16 +13,16 @@ final class SetupManager: ObservableObject {
     @Published var lastError: String?
     @Published var diagnostics: Diagnostics?
 
-    let serverPort: UInt16 = 9876
-    private let pfAnchorName = "golinks"
-    private let pfAnchorFile = "/etc/pf.anchors/golinks"
+    let serverPort = AppConfig.httpPort
 
     struct Diagnostics {
         var port80Process: String?
         var port9876Process: String?
+        var port9877Process: String?
         var pfNatRules: String
         var hostsGoLine: String?
         var tlsCertExists: Bool
+        var httpForwardReachable: Bool
     }
 
     private init() { refresh() }
@@ -33,7 +33,7 @@ final class SetupManager: ObservableObject {
         hostsConfigured = checkHostsEntry()
         pfConfigured = checkPFConf()
         pfActiveInKernel = checkPFKernel()
-        tlsCertConfigured = FileManager.default.fileExists(atPath: TLSServer.p12Path)
+        tlsCertConfigured = FileManager.default.fileExists(atPath: AppConfig.p12Path)
     }
 
     private func checkHostsEntry() -> Bool {
@@ -41,42 +41,45 @@ final class SetupManager: ObservableObject {
         return lines.contains { line in
             let t = line.trimmingCharacters(in: .whitespaces)
             guard !t.hasPrefix("#"), t.hasPrefix("127.0.0.1") else { return false }
-            return t.split(whereSeparator: \.isWhitespace).dropFirst().contains("go")
+            return t.split(whereSeparator: \.isWhitespace)
+                .dropFirst()
+                .contains { $0 == AppConfig.hostName }
         }
     }
 
     private func checkPFConf() -> Bool {
         let pfConf = (try? String(contentsOfFile: "/etc/pf.conf", encoding: .utf8)) ?? ""
-        return pfConf.contains("rdr-anchor \"\(pfAnchorName)\"")
+        let anchorExists = FileManager.default.fileExists(atPath: AppConfig.pfAnchorFile)
+        return anchorExists
+            && pfConf.contains("rdr-anchor \"\(AppConfig.pfAnchorName)\"")
+            && pfConf.contains("load anchor \"\(AppConfig.pfAnchorName)\"")
     }
 
     private func checkPFKernel() -> Bool {
-        // pfctl needs root to list rules. Use two proxy checks:
-        // 1. The anchor file exists and contains the expected port (rules written to disk).
-        // 2. nc can open a TCP connection to :80 (pf rdr is live and our server is running).
-        let anchorHasRule = (try? String(contentsOfFile: pfAnchorFile, encoding: .utf8))?
+        let anchorHasRule = (try? String(contentsOfFile: AppConfig.pfAnchorFile, encoding: .utf8))?
             .contains("\(serverPort)") ?? false
         guard anchorHasRule else { return false }
-        let exitCode = shell("nc -z -w1 127.0.0.1 80 2>/dev/null; echo $?")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return exitCode == "0"
+        return shellExitCode("/usr/bin/nc -z -G 1 127.0.0.1 80 >/dev/null 2>&1") == 0
     }
 
     // MARK: - Diagnostics
 
     func runDiagnostics() {
         let port80 = processOnPort(80)
-        let port9876 = processOnPort(9876)
+        let port9876 = processOnPort(Int(AppConfig.httpPort))
+        let port9877 = processOnPort(Int(AppConfig.httpsPort))
         let nat = shell("pfctl -s nat 2>/dev/null")
         let hosts = (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?
             .components(separatedBy: "\n")
-            .first { $0.contains("127.0.0.1 go") }
+            .first { $0.contains("127.0.0.1 \(AppConfig.hostName)") }
         diagnostics = Diagnostics(
             port80Process: port80,
             port9876Process: port9876,
+            port9877Process: port9877,
             pfNatRules: nat.isEmpty ? "(none / pf disabled)" : nat,
             hostsGoLine: hosts,
-            tlsCertExists: FileManager.default.fileExists(atPath: TLSServer.p12Path)
+            tlsCertExists: FileManager.default.fileExists(atPath: AppConfig.p12Path),
+            httpForwardReachable: shellExitCode("/usr/bin/nc -z -G 1 127.0.0.1 80 >/dev/null 2>&1") == 0
         )
     }
 
@@ -101,86 +104,112 @@ final class SetupManager: ObservableObject {
             runDiagnostics()
         }
 
-        // Write setup shell script to a temp file to avoid escaping hell
-        let scriptContent = setupShellScript()
-        let tmpPath = "/tmp/golinks_setup.sh"
-        do {
-            try scriptContent.write(toFile: tmpPath, atomically: true, encoding: .utf8)
-        } catch {
-            lastError = "Failed to write setup script: \(error.localizedDescription)"
-            return
-        }
-
-        let appleScript = "do shell script \"bash '\(tmpPath)'\" with administrator privileges"
-        if let err = runAppleScript(appleScript) {
+        if let err = runAdminScript(setupShellScript(), prefix: "golinks-setup") {
             lastError = err
         }
     }
 
     private func setupShellScript() -> String {
-        let httpsPort = TLSServer.port.rawValue
-        let certDir = TLSServer.certDir
-        let p12Path = TLSServer.p12Path
-        let p12Password = TLSServer.p12Password
-
         return """
         #!/bin/bash
         set -e
 
-        # 1. /etc/hosts – add "127.0.0.1 go" if missing
-        if ! grep -q '# go-links-app' /etc/hosts; then
-            printf '\\n127.0.0.1 go  # go-links-app\\n' >> /etc/hosts
+        HOST_NAME="\(AppConfig.hostName)"
+        HOST_MARKER="# \(AppConfig.setupMarker)"
+        PF_ANCHOR_NAME="\(AppConfig.pfAnchorName)"
+        PF_ANCHOR_FILE="\(AppConfig.pfAnchorFile)"
+        HTTP_PORT="\(AppConfig.httpPort)"
+        HTTPS_PORT="\(AppConfig.httpsPort)"
+        CERT_DIR="\(AppConfig.certificateDirectory)"
+        CERT_PATH="\(AppConfig.certificatePath)"
+        KEY_PATH="\(AppConfig.privateKeyPath)"
+        P12_PATH="\(AppConfig.p12Path)"
+        P12_PASSWORD="\(AppConfig.p12Password)"
+        USER_HOME="\(NSHomeDirectory())"
+
+        if ! /usr/bin/grep -Eq "^[[:space:]]*127[.]0[.]0[.]1[[:space:]]+([^#[:space:]]+[[:space:]]+)*${HOST_NAME}([[:space:]]|$)" /etc/hosts; then
+            /usr/bin/printf '\\n127.0.0.1 %s  %s\\n' "$HOST_NAME" "$HOST_MARKER" >> /etc/hosts
         fi
 
-        # 2. pf anchor file – redirect :80 → :\(serverPort), :443 → :\(httpsPort)
-        mkdir -p /etc/pf.anchors
-        printf 'rdr pass on lo0 proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port \(serverPort)\\n' > \(pfAnchorFile)
-        printf 'rdr pass on lo0 proto tcp from any to 127.0.0.1 port 443 -> 127.0.0.1 port \(httpsPort)\\n' >> \(pfAnchorFile)
+        /bin/mkdir -p /etc/pf.anchors
+        /usr/bin/printf 'rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port %s\\n' "$HTTP_PORT" > "$PF_ANCHOR_FILE"
+        /usr/bin/printf 'rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 443 -> 127.0.0.1 port %s\\n' "$HTTPS_PORT" >> "$PF_ANCHOR_FILE"
 
-        # 3. Insert rdr-anchor into pf.conf in the correct position
-        #    pf requires: options, normalization, queueing, translation, filtering
-        #    rdr-anchor (translation) MUST come before anchor (filtering)
-        sed -i '' '/rdr-anchor "\(pfAnchorName)"/d' /etc/pf.conf
-        sed -i '' '/load anchor "\(pfAnchorName)"/d' /etc/pf.conf
+        /usr/bin/sed -i '' "/rdr-anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf
+        /usr/bin/sed -i '' "/load anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf
 
-        LAST_RDR=$(grep -n 'rdr-anchor' /etc/pf.conf | tail -1 | cut -d: -f1)
-        if [ -n "$LAST_RDR" ]; then
-            head -n "$LAST_RDR" /etc/pf.conf > /tmp/pf_golinks.tmp
-            echo 'rdr-anchor "\(pfAnchorName)"' >> /tmp/pf_golinks.tmp
-            tail -n +"$((LAST_RDR + 1))" /etc/pf.conf >> /tmp/pf_golinks.tmp
-            mv /tmp/pf_golinks.tmp /etc/pf.conf
-        else
-            echo 'rdr-anchor "\(pfAnchorName)"' >> /etc/pf.conf
+        PF_TMP="$(/usr/bin/mktemp /tmp/golinks-pf.XXXXXX)"
+        /usr/bin/awk -v anchor="$PF_ANCHOR_NAME" -v file="$PF_ANCHOR_FILE" '
+            BEGIN { inserted = 0 }
+            inserted == 0 && $1 == "anchor" {
+                printf "rdr-anchor \\"%s\\"\\n", anchor
+                inserted = 1
+            }
+            { print }
+            END {
+                if (inserted == 0) {
+                    printf "rdr-anchor \\"%s\\"\\n", anchor
+                }
+                printf "load anchor \\"%s\\" from \\"%s\\"\\n", anchor, file
+            }
+        ' /etc/pf.conf > "$PF_TMP"
+        /bin/cp "$PF_TMP" /etc/pf.conf
+        /bin/rm -f "$PF_TMP"
+
+        /sbin/pfctl -e 2>/dev/null || true
+        /sbin/pfctl -f /etc/pf.conf 2>&1
+        /sbin/pfctl -a "$PF_ANCHOR_NAME" -f "$PF_ANCHOR_FILE" 2>&1
+
+        /bin/mkdir -p "$CERT_DIR"
+        NEEDS_CERT=0
+        if [ ! -f "$CERT_PATH" ] || [ ! -f "$P12_PATH" ]; then
+            NEEDS_CERT=1
+        elif ! /usr/bin/openssl x509 -in "$CERT_PATH" -noout -text 2>/dev/null | /usr/bin/grep -q "Digital Signature"; then
+            NEEDS_CERT=1
+        elif /usr/bin/openssl x509 -in "$CERT_PATH" -noout -issuer 2>/dev/null | /usr/bin/grep -q "issuer=CN = go\\|issuer=CN=go"; then
+            NEEDS_CERT=1
         fi
-        echo 'load anchor "\(pfAnchorName)" from "\(pfAnchorFile)"' >> /etc/pf.conf
 
-        # 4. Enable pf and reload
-        pfctl -e 2>/dev/null || true
-        pfctl -f /etc/pf.conf 2>&1
-        pfctl -a \(pfAnchorName) -f \(pfAnchorFile) 2>&1
+        if [ "$NEEDS_CERT" -eq 1 ]; then
+            MKCERT_BIN=""
+            if [ -x /opt/homebrew/bin/mkcert ]; then
+                MKCERT_BIN="/opt/homebrew/bin/mkcert"
+            elif [ -x /usr/local/bin/mkcert ]; then
+                MKCERT_BIN="/usr/local/bin/mkcert"
+            fi
 
-        # 5. Generate TLS cert for https://go/ (if not already present)
-        mkdir -p \(certDir)
-        if [ ! -f "\(certDir)/server.crt" ]; then
-            printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=go\\n[v3]\\nsubjectAltName=DNS:go,IP:127.0.0.1\\nkeyUsage=keyEncipherment,dataEncipherment\\nextendedKeyUsage=serverAuth\\n' > /tmp/golinks_ssl.cnf
-            /usr/bin/openssl req -x509 -newkey rsa:2048 \\
-                -keyout \(certDir)/server.key \\
-                -out \(certDir)/server.crt \\
-                -days 3650 -nodes -config /tmp/golinks_ssl.cnf 2>/dev/null
+            MKCERT_CAROOT="$USER_HOME/Library/Application Support/mkcert"
+            USED_MKCERT=0
+            if [ -n "$MKCERT_BIN" ] && [ -f "$MKCERT_CAROOT/rootCA.pem" ]; then
+                CAROOT="$MKCERT_CAROOT" "$MKCERT_BIN" \\
+                    -cert-file "$CERT_PATH" \\
+                    -key-file "$KEY_PATH" \\
+                    "$HOST_NAME" 127.0.0.1 >/dev/null
+                USED_MKCERT=1
+            else
+                SSL_CONFIG="$(/usr/bin/mktemp /tmp/golinks-ssl.XXXXXX)"
+                /usr/bin/printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=%s\\n[v3]\\nbasicConstraints=critical,CA:TRUE\\nsubjectAltName=DNS:%s,IP:127.0.0.1\\nkeyUsage=critical,digitalSignature,keyEncipherment,keyCertSign\\nextendedKeyUsage=serverAuth\\n' "$HOST_NAME" "$HOST_NAME" > "$SSL_CONFIG"
+                /usr/bin/openssl req -x509 -newkey rsa:2048 \\
+                    -keyout "$KEY_PATH" \\
+                    -out "$CERT_PATH" \\
+                    -days 3650 -nodes -config "$SSL_CONFIG" 2>/dev/null
+                /bin/rm -f "$SSL_CONFIG"
+            fi
             /usr/bin/openssl pkcs12 -export \\
-                -inkey \(certDir)/server.key \\
-                -in \(certDir)/server.crt \\
-                -out \(p12Path) \\
-                -passout pass:\(p12Password) 2>/dev/null
-            rm -f /tmp/golinks_ssl.cnf
-            chmod 644 \(certDir)/server.crt \(p12Path)
-            chmod 600 \(certDir)/server.key
-        fi
+                -inkey "$KEY_PATH" \\
+                -in "$CERT_PATH" \\
+                -out "$P12_PATH" \\
+                -passout pass:"$P12_PASSWORD" 2>/dev/null
+            /bin/chmod 644 "$CERT_PATH" "$P12_PATH"
+            /bin/chmod 600 "$KEY_PATH"
 
-        # 6. Trust the cert in the System keychain (so Chrome accepts it)
-        security add-trusted-cert -d -r trustRoot \\
-            -k /Library/Keychains/System.keychain \\
-            \(certDir)/server.crt 2>/dev/null || true
+            if [ "$USED_MKCERT" -eq 0 ]; then
+                /usr/bin/security add-trusted-cert -d -r trustRoot \\
+                    -p ssl -p basic \\
+                    -k /Library/Keychains/System.keychain \\
+                    "$CERT_PATH" 2>/dev/null || true
+            fi
+        fi
         """
     }
 
@@ -197,19 +226,21 @@ final class SetupManager: ObservableObject {
 
         let scriptContent = """
         #!/bin/bash
-        sed -i '' '/# go-links-app/d' /etc/hosts 2>/dev/null || true
-        sed -i '' '/rdr-anchor "\(pfAnchorName)"/d' /etc/pf.conf 2>/dev/null || true
-        sed -i '' '/load anchor "\(pfAnchorName)"/d' /etc/pf.conf 2>/dev/null || true
-        rm -f \(pfAnchorFile)
-        pfctl -a \(pfAnchorName) -F all 2>/dev/null || true
-        pfctl -f /etc/pf.conf 2>/dev/null || true
-        security remove-trusted-cert \(TLSServer.certDir)/server.crt 2>/dev/null || true
-        rm -rf \(TLSServer.certDir)
+        PF_ANCHOR_NAME="\(AppConfig.pfAnchorName)"
+        PF_ANCHOR_FILE="\(AppConfig.pfAnchorFile)"
+        CERT_DIR="\(AppConfig.certificateDirectory)"
+        CERT_PATH="\(AppConfig.certificatePath)"
+
+        /usr/bin/sed -i '' '/# \(AppConfig.setupMarker)/d' /etc/hosts 2>/dev/null || true
+        /usr/bin/sed -i '' "/rdr-anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf 2>/dev/null || true
+        /usr/bin/sed -i '' "/load anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf 2>/dev/null || true
+        /bin/rm -f "$PF_ANCHOR_FILE"
+        /sbin/pfctl -a "$PF_ANCHOR_NAME" -F all 2>/dev/null || true
+        /sbin/pfctl -f /etc/pf.conf 2>/dev/null || true
+        /usr/bin/security remove-trusted-cert "$CERT_PATH" 2>/dev/null || true
+        /bin/rm -rf "$CERT_DIR"
         """
-        let tmpPath = "/tmp/golinks_teardown.sh"
-        try? scriptContent.write(toFile: tmpPath, atomically: true, encoding: .utf8)
-        let appleScript = "do shell script \"bash '\(tmpPath)'\" with administrator privileges"
-        if let err = runAppleScript(appleScript) {
+        if let err = runAdminScript(scriptContent, prefix: "golinks-teardown") {
             lastError = err
         }
     }
@@ -220,7 +251,7 @@ final class SetupManager: ObservableObject {
         refresh()
         guard pfConfigured && !pfActiveInKernel else { return }
         let appleScript = """
-        do shell script "pfctl -e 2>/dev/null || true; pfctl -f /etc/pf.conf 2>&1; pfctl -a \(pfAnchorName) -f \(pfAnchorFile) 2>&1" with administrator privileges
+        do shell script "/sbin/pfctl -e 2>/dev/null || true; /sbin/pfctl -f /etc/pf.conf 2>&1; /sbin/pfctl -a \(AppConfig.pfAnchorName) -f \(AppConfig.pfAnchorFile) 2>&1" with administrator privileges
         """
         if let err = runAppleScript(appleScript) {
             lastError = err
@@ -229,6 +260,24 @@ final class SetupManager: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    private func runAdminScript(_ script: String, prefix: String) -> String? {
+        let scriptURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("\(prefix)-\(UUID().uuidString).sh")
+
+        do {
+            try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: scriptURL.path)
+        } catch {
+            return "Failed to prepare setup script: \(error.localizedDescription)"
+        }
+
+        defer { try? FileManager.default.removeItem(at: scriptURL) }
+
+        let command = "/bin/bash \(shellQuote(scriptURL.path))"
+        let appleScript = "do shell script \"\(appleScriptQuote(command))\" with administrator privileges"
+        return runAppleScript(appleScript)
+    }
 
     @discardableResult
     private func runAppleScript(_ source: String) -> String? {
@@ -243,6 +292,21 @@ final class SetupManager: ObservableObject {
         return nil
     }
 
+    private func shellExitCode(_ command: String) -> Int32 {
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", command]
+        task.standardOutput = Pipe()
+        task.standardError = Pipe()
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus
+        } catch {
+            return 127
+        }
+    }
+
     func shell(_ command: String) -> String {
         let task = Process()
         task.launchPath = "/bin/sh"
@@ -253,5 +317,15 @@ final class SetupManager: ObservableObject {
         try? task.run()
         task.waitUntilExit()
         return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    }
+
+    private func shellQuote(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
+    }
+
+    private func appleScriptQuote(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 }

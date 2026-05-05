@@ -1,14 +1,17 @@
 # Go Links – macOS Menu Bar App
 
-A lightweight macOS menu bar app that brings Google-style **go links** to your
-personal machine. Type `go/mylink` in **any browser** and get redirected to
-whatever URL you've mapped it to.
+A lightweight macOS menu bar app that brings Google-style **go links** and
+automatic clipboard-backed pastebin snippets to your machine. Type `go/mylink`
+in **any browser** to redirect, or open `go/paste` to browse copied text.
 
 ```
 go/gh      →  https://github.com
 go/meet    →  https://meet.google.com
 go/docs    →  https://docs.google.com/…
+go/search/openai → https://www.google.com/search?q=openai
 go/jira    →  https://yourcompany.atlassian.net
+go/paste   →  paste index
+go/paste/abc123/raw → raw snippet text
 ```
 
 ---
@@ -18,9 +21,13 @@ go/jira    →  https://yourcompany.atlassian.net
 - **Menu bar app** – lives in the menu bar, no Dock icon
 - **Universal** – works in Safari, Chrome, Firefox, Arc, Edge, and more
 - **Instant redirects** – 302 redirect with query-string passthrough (`go/search?q=foo`)
-- **Clean UI** – add, edit, delete links; search/filter; copy link to clipboard
-- **Persistent** – links stored in `UserDefaults`; survive reboots
-- **Index page** – browse all your go links at `http://go/`
+- **Nested shortcuts** – exact paths and longest-prefix matching (`go/team/wiki`)
+- **Path templates** – use `{path}` when a shortcut should consume the remaining path (`go/search/foo` → `...?q=foo`)
+- **Pastebin** – automatically saves copied text snippets; edit, search, open, and copy them
+- **Keyboard-first paste history** – opens on pastes; arrow through items, preview, and copy from the menu
+- **Clean UI** – tool switcher, embedded settings, inline forms, search/filter, copy actions
+- **Persistent** – links and pastes stored in `UserDefaults`; survive reboots
+- **Index pages** – browse links at `http://go/` and pastes at `https://go/paste`
 
 ---
 
@@ -39,6 +46,9 @@ cd mac-apps
 
 # Build and open the default app bundle:
 make open
+
+# Run tests:
+make test
 
 # Or install to /Applications:
 make install
@@ -68,13 +78,13 @@ git push origin go-links-v1.0.0
 
 ## One-time System Setup
 
-After launching the app, click the **Setup** button in the footer.
+After launching the app, click the **Setup** button in the header.
 This will prompt for your admin password **once** and perform two operations:
 
 | Step | What it does |
 |---|---|
 | `/etc/hosts` entry | Adds `127.0.0.1 go` so browsers resolve the `go` hostname locally |
-| pf port-forwarding | Redirects TCP port 80 → 9876 (the app's server port) — persists across reboots via `/etc/pf.conf` |
+| pf port-forwarding | Redirects TCP port 80 → 9876 and 443 → 9877 — persists across reboots via `/etc/pf.conf` |
 
 The app itself never runs as root.
 
@@ -94,6 +104,16 @@ Browser:  http://go/mylink
         302 redirect → https://example.com
 ```
 
+Pastebin routes use the same local hostname:
+
+```
+Browser:  https://go/paste/abc123
+              │
+      GoLinks HTTPS server (port 9877)
+              │
+        HTML paste page or /raw text response
+```
+
 ---
 
 ## Project Structure
@@ -108,15 +128,20 @@ mac-apps/
     ├── Resources/
     │   └── Info.plist             App bundle metadata
     └── Sources/GoLinks/
+        ├── AppConfig.swift        Shared app constants and routes
         ├── GoLinksApp.swift       @main – App + AppDelegate
-        ├── GoLinkStore.swift      Data model + UserDefaults persistence
-        ├── HTTPServer.swift       BSD-socket HTTP server (no deps)
-        ├── SetupManager.swift     /etc/hosts + pf setup via AppleScript
+        ├── GoLinkStore.swift      Link model + UserDefaults persistence
+        ├── PasteStore.swift       Paste model + UserDefaults persistence
+        ├── GoLinkRouter.swift     Local HTTP/HTTPS route handling
+        ├── HTTPServer.swift       HTTP server
+        ├── TLSServer.swift        HTTPS server
+        ├── SetupManager.swift     /etc/hosts + pf + certificate setup
         └── Views/
-            ├── MenuBarView.swift      Main popover UI
-            ├── GoLinkRow.swift        Per-link row with hover actions
-            ├── AddEditLinkView.swift  Add / edit sheet
-            └── SetupView.swift        One-time setup sheet
+            ├── MenuBarView.swift        Tool shell and switcher
+            ├── LinksToolView.swift      Go-links tool
+            ├── PastesToolView.swift     Pastebin tool
+            ├── SharedToolViews.swift    Shared menu controls
+            └── SetupView.swift          One-time setup panel
 ```
 
 ---

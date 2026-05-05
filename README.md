@@ -6,7 +6,7 @@ This repository contains small macOS apps.
 
 | App | Description |
 |---|---|
-| [Go Links](apps/go-links) | Menu bar app for local `go/...` shortcuts. |
+| [Go Links](apps/go-links) | Menu bar app for local `go/...` shortcuts and `go/paste/...` snippets. |
 
 ## Build
 
@@ -14,6 +14,7 @@ Run commands from the repo root to work with the default app:
 
 ```bash
 make build
+make test
 make open
 make install
 ```
