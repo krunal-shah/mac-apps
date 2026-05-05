@@ -19,9 +19,9 @@ enum AppTool: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .links:
-            return "arrow.triangle.branch"
+            return "link"
         case .pastes:
-            return "doc.text"
+            return "doc.on.clipboard"
         }
     }
 }

@@ -1,8 +1,9 @@
-# Go Links – macOS Menu Bar App
+# Command Shelf – macOS Menu Bar App
 
-A lightweight macOS menu bar app that brings Google-style **go links** and
-automatic clipboard-backed pastebin snippets to your machine. Type `go/mylink`
-in **any browser** to redirect, or open `go/paste` to browse copied text.
+Command Shelf is a lightweight macOS menu bar utility shelf. It currently brings
+Google-style **go links** and automatic clipboard-backed pastebin snippets to
+your machine. Type `go/mylink` in **any browser** to redirect, or open
+`go/paste` to browse copied text.
 
 ```
 go/gh      →  https://github.com
@@ -67,11 +68,12 @@ make open
 ## GitHub Releases
 
 The repo includes a GitHub Actions workflow that builds this app and uploads
-`GoLinks.app.zip` to the Releases tab whenever a `go-links-v*` tag is pushed:
+`CommandShelf.app.zip` to the Releases tab whenever a `command-shelf-v*` tag is
+pushed:
 
 ```bash
-git tag go-links-v1.0.0
-git push origin go-links-v1.0.0
+git tag command-shelf-v1.0.0
+git push origin command-shelf-v1.0.0
 ```
 
 ---
@@ -99,7 +101,7 @@ Browser:  http://go/mylink
               │
          pf NAT rule: :80 → :9876
               │
-      GoLinks HTTP server (port 9876)
+      Command Shelf HTTP server (port 9876)
               │
         302 redirect → https://example.com
 ```
@@ -109,7 +111,7 @@ Pastebin routes use the same local hostname:
 ```
 Browser:  https://go/paste/abc123
               │
-      GoLinks HTTPS server (port 9877)
+      Command Shelf HTTPS server (port 9877)
               │
         HTML paste page or /raw text response
 ```
@@ -146,7 +148,7 @@ mac-apps/
 
 ---
 
-## Removing Go Links
+## Removing Command Shelf
 
 Open **Setup** → **Remove Setup**. This removes the `/etc/hosts` entry and the
 pf rule, fully cleaning up the system changes.

@@ -6,15 +6,17 @@
     <key>CFBundleIdentifier</key>
     <string>com.golinks.app</string>
     <key>CFBundleName</key>
-    <string>GoLinks</string>
+    <string>CommandShelf</string>
     <key>CFBundleDisplayName</key>
-    <string>Go Links</string>
+    <string>Command Shelf</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleExecutable</key>
-    <string>GoLinks</string>
+    <string>CommandShelf</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -32,7 +34,7 @@
 
     <!-- Permission descriptions (macOS privacy) -->
     <key>NSAppleEventsUsageDescription</key>
-    <string>Go Links uses Apple Events to run privileged setup commands (adding /etc/hosts entry and pf port-forwarding rule).</string>
+    <string>Command Shelf uses Apple Events to run privileged setup commands (adding /etc/hosts entry and pf port-forwarding rule).</string>
 
     <!-- Minimum macOS version -->
     <key>LSMinimumSystemVersion</key>

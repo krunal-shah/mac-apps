@@ -2,9 +2,9 @@ import Foundation
 import Network
 
 enum AppConfig {
-    static let suiteName = "Mac Apps"
-    static let appName = "Go Links"
-    static let processName = "GoLinks"
+    static let suiteName = "Command Shelf"
+    static let appName = "Command Shelf"
+    static let processName = "CommandShelf"
     static let hostName = "go"
     static let pastePath = "paste"
     static let pathPlaceholder = "{path}"

@@ -5,7 +5,7 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Set by GoLinksApp.init() before applicationDidFinishLaunching fires
+    // Set by GoLinksApp.init() before applicationDidFinishLaunching fires.
     static var server: HTTPServer?
     static var tlsServer: TLSServer?
     static var pasteStore: PasteStore?
@@ -83,7 +83,7 @@ struct GoLinksApp: App {
 
     private var menuBarLabel: some View {
         ZStack(alignment: .topTrailing) {
-            Image(systemName: "arrow.triangle.branch")
+            Image(systemName: "square.grid.2x2")
             if !setup.hostsConfigured || !setup.pfConfigured {
                 Circle()
                     .fill(.orange)
