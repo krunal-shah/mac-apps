@@ -4,7 +4,7 @@ import Network
 enum AppConfig {
     static let suiteName = "Command Shelf"
     static let appName = "Command Shelf"
-    static let processName = "GoLinks"
+    static let processName = "CommandShelf"
     static let hostName = "go"
     static let pastePath = "paste"
     static let pathPlaceholder = "{path}"

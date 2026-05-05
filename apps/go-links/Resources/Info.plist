@@ -4,7 +4,7 @@
 <dict>
     <!-- Bundle identification -->
     <key>CFBundleIdentifier</key>
-    <string>com.golinks.app</string>
+    <string>com.krunalshah.commandshelf</string>
     <key>CFBundleName</key>
     <string>CommandShelf</string>
     <key>CFBundleDisplayName</key>
@@ -14,7 +14,7 @@
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleExecutable</key>
-    <string>GoLinks</string>
+    <string>CommandShelf</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>

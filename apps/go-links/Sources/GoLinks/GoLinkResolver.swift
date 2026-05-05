@@ -6,7 +6,7 @@ struct GoLinkResolution: Equatable {
 }
 
 final class GoLinkResolver {
-    private let queue = DispatchQueue(label: "com.golinks.resolver", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "com.krunalshah.commandshelf.link-resolver", attributes: .concurrent)
     private var orderedLinks: [GoLink] = []
     private var linksByName: [String: GoLink] = [:]
 

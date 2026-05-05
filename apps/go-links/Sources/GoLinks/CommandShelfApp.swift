@@ -5,7 +5,7 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Set by GoLinksApp.init() before applicationDidFinishLaunching fires.
+    // Set by CommandShelfApp.init() before applicationDidFinishLaunching fires.
     static var server: HTTPServer?
     static var tlsServer: TLSServer?
     static var pasteStore: PasteStore?
@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - SwiftUI App
 
 @main
-struct GoLinksApp: App {
+struct CommandShelfApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     @StateObject private var store: GoLinkStore

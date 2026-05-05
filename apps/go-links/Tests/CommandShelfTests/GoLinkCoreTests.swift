@@ -1,5 +1,5 @@
 import XCTest
-@testable import GoLinks
+@testable import CommandShelf
 
 final class GoLinkCoreTests: XCTestCase {
     func testNameNormalizationAcceptsCommonInput() throws {
@@ -171,7 +171,7 @@ final class GoLinkCoreTests: XCTestCase {
 
     @MainActor
     private func makePasteStore() -> PasteStore {
-        let suiteName = "GoLinksTests-\(UUID().uuidString)"
+        let suiteName = "CommandShelfTests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return PasteStore(defaults: defaults, resolver: PasteResolver())

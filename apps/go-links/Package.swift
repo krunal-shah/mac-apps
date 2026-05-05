@@ -2,18 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "GoLinks",
+    name: "CommandShelf",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "GoLinks",
+            name: "CommandShelf",
             path: "Sources/GoLinks"
             // Info.plist is bundled by the Makefile, not by SPM
         ),
         .testTarget(
-            name: "GoLinksTests",
-            dependencies: ["GoLinks"],
-            path: "Tests/GoLinksTests"
+            name: "CommandShelfTests",
+            dependencies: ["CommandShelf"],
+            path: "Tests/CommandShelfTests"
         )
     ]
 )
