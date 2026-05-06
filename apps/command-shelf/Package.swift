@@ -6,13 +6,13 @@ let package = Package(
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "CommandShelf",
-            path: "Sources/GoLinks"
+            name: "GoLinks",
+            path: "Sources/CommandShelf"
             // Info.plist is bundled by the Makefile, not by SPM
         ),
         .testTarget(
             name: "CommandShelfTests",
-            dependencies: ["CommandShelf"],
+            dependencies: ["GoLinks"],
             path: "Tests/CommandShelfTests"
         )
     ]

@@ -6,7 +6,7 @@ This repository contains small macOS apps.
 
 | App | Description |
 |---|---|
-| [Command Shelf](apps/go-links) | Menu bar utility shelf for local `go/...` shortcuts and clipboard-backed pastes. |
+| [Command Shelf](apps/command-shelf) | Menu bar utility shelf for local `go/...` shortcuts and clipboard-backed pastes. |
 
 ## Build
 
@@ -19,11 +19,11 @@ make open
 make install
 ```
 
-The root Makefile delegates to `apps/go-links`. You can also work from the app
+The root Makefile delegates to `apps/command-shelf`. You can also work from the app
 directory directly:
 
 ```bash
-cd apps/go-links
+cd apps/command-shelf
 make open
 ```
 

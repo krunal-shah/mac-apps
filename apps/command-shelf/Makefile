@@ -6,7 +6,8 @@
 
 APP_NAME    = CommandShelf
 DISPLAY_NAME = Command Shelf
-EXECUTABLE  = CommandShelf
+# Keep the executable name stable for LaunchServices while the app bundle is CommandShelf.app.
+EXECUTABLE  = GoLinks
 BUILD_DIR   = .build
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 BINARY      = $(BUILD_DIR)/release/$(EXECUTABLE)

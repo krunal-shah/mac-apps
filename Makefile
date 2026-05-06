@@ -1,4 +1,4 @@
-APP ?= go-links
+APP ?= command-shelf
 APP_DIR = apps/$(APP)
 
 .PHONY: list build app install run open clean test release-zip

@@ -104,7 +104,7 @@ final class SetupManager: ObservableObject {
             runDiagnostics()
         }
 
-        if let err = runAdminScript(setupShellScript(), prefix: "golinks-setup") {
+        if let err = runAdminScript(setupShellScript(), prefix: "command-shelf-setup") {
             lastError = err
         }
     }
@@ -115,7 +115,9 @@ final class SetupManager: ObservableObject {
         set -e
 
         HOST_NAME="\(AppConfig.hostName)"
-        HOST_MARKER="# \(AppConfig.setupMarker)"
+        SETUP_MARKER="\(AppConfig.setupMarker)"
+        LEGACY_SETUP_MARKER="\(AppConfig.legacySetupMarker)"
+        HOST_MARKER="# ${SETUP_MARKER}"
         PF_ANCHOR_NAME="\(AppConfig.pfAnchorName)"
         PF_ANCHOR_FILE="\(AppConfig.pfAnchorFile)"
         HTTP_PORT="\(AppConfig.httpPort)"
@@ -126,6 +128,8 @@ final class SetupManager: ObservableObject {
         P12_PATH="\(AppConfig.p12Path)"
         P12_PASSWORD_PATH="\(AppConfig.p12PasswordPath)"
         USER_HOME="\(NSHomeDirectory())"
+
+        /usr/bin/sed -i '' "s/# ${LEGACY_SETUP_MARKER}/# ${SETUP_MARKER}/g" /etc/hosts 2>/dev/null || true
 
         if ! /usr/bin/grep -Eq "^[[:space:]]*127[.]0[.]0[.]1[[:space:]]+([^#[:space:]]+[[:space:]]+)*${HOST_NAME}([[:space:]]|$)" /etc/hosts; then
             /usr/bin/printf '\\n127.0.0.1 %s  %s\\n' "$HOST_NAME" "$HOST_MARKER" >> /etc/hosts
@@ -138,7 +142,7 @@ final class SetupManager: ObservableObject {
         /usr/bin/sed -i '' "/rdr-anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf
         /usr/bin/sed -i '' "/load anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf
 
-        PF_TMP="$(/usr/bin/mktemp /tmp/golinks-pf.XXXXXX)"
+        PF_TMP="$(/usr/bin/mktemp /tmp/command-shelf-pf.XXXXXX)"
         /usr/bin/awk -v anchor="$PF_ANCHOR_NAME" -v file="$PF_ANCHOR_FILE" '
             BEGIN { inserted = 0 }
             inserted == 0 && $1 == "anchor" {
@@ -187,7 +191,7 @@ final class SetupManager: ObservableObject {
                     "$HOST_NAME" 127.0.0.1 >/dev/null
                 USED_MKCERT=1
             else
-                SSL_CONFIG="$(/usr/bin/mktemp /tmp/golinks-ssl.XXXXXX)"
+                SSL_CONFIG="$(/usr/bin/mktemp /tmp/command-shelf-ssl.XXXXXX)"
                 /usr/bin/printf '[req]\\ndistinguished_name=dn\\nx509_extensions=v3\\nprompt=no\\n[dn]\\nCN=%s\\n[v3]\\nbasicConstraints=critical,CA:TRUE\\nsubjectAltName=DNS:%s,IP:127.0.0.1\\nkeyUsage=critical,digitalSignature,keyEncipherment,keyCertSign\\nextendedKeyUsage=serverAuth\\n' "$HOST_NAME" "$HOST_NAME" > "$SSL_CONFIG"
                 /usr/bin/openssl req -x509 -newkey rsa:2048 \\
                     -keyout "$KEY_PATH" \\
@@ -231,10 +235,13 @@ final class SetupManager: ObservableObject {
         #!/bin/bash
         PF_ANCHOR_NAME="\(AppConfig.pfAnchorName)"
         PF_ANCHOR_FILE="\(AppConfig.pfAnchorFile)"
+        SETUP_MARKER="\(AppConfig.setupMarker)"
+        LEGACY_SETUP_MARKER="\(AppConfig.legacySetupMarker)"
         CERT_DIR="\(AppConfig.certificateDirectory)"
         CERT_PATH="\(AppConfig.certificatePath)"
 
-        /usr/bin/sed -i '' '/# \(AppConfig.setupMarker)/d' /etc/hosts 2>/dev/null || true
+        /usr/bin/sed -i '' "/# ${SETUP_MARKER}/d" /etc/hosts 2>/dev/null || true
+        /usr/bin/sed -i '' "/# ${LEGACY_SETUP_MARKER}/d" /etc/hosts 2>/dev/null || true
         /usr/bin/sed -i '' "/rdr-anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf 2>/dev/null || true
         /usr/bin/sed -i '' "/load anchor \\"${PF_ANCHOR_NAME}\\"/d" /etc/pf.conf 2>/dev/null || true
         /bin/rm -f "$PF_ANCHOR_FILE"
@@ -243,7 +250,7 @@ final class SetupManager: ObservableObject {
         /usr/bin/security remove-trusted-cert "$CERT_PATH" 2>/dev/null || true
         /bin/rm -rf "$CERT_DIR"
         """
-        if let err = runAdminScript(scriptContent, prefix: "golinks-teardown") {
+        if let err = runAdminScript(scriptContent, prefix: "command-shelf-teardown") {
             lastError = err
         }
     }
