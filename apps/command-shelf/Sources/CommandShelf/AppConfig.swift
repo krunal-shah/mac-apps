@@ -4,7 +4,7 @@ import Network
 enum AppConfig {
     static let suiteName = "Command Shelf"
     static let appName = "Command Shelf"
-    static let processName = "CommandShelf"
+    static let processName = "GoLinks"
     static let hostName = "go"
     static let pastePath = "paste"
     static let pathPlaceholder = "{path}"
@@ -15,7 +15,8 @@ enum AppConfig {
 
     static let pfAnchorName = "golinks"
     static let pfAnchorFile = "/etc/pf.anchors/golinks"
-    static let setupMarker = "go-links-app"
+    static let setupMarker = "command-shelf-app"
+    static let legacySetupMarker = "go-links-app"
 
     static let certificateDirectory = "/Library/GoLinks"
     static let certificatePath = "/Library/GoLinks/server.crt"

@@ -61,7 +61,7 @@ make release-zip
 You can also run the same commands from the app directory:
 
 ```bash
-cd apps/go-links
+cd apps/command-shelf
 make open
 ```
 
@@ -122,16 +122,16 @@ Browser:  https://go/paste/abc123
 
 ```
 mac-apps/
-├── Makefile                       Delegates common commands to apps/go-links
+├── Makefile                       Delegates common commands to apps/command-shelf
 ├── README.md                      Repository overview
-└── apps/go-links/
+└── apps/command-shelf/
     ├── Package.swift              Swift Package Manager manifest
     ├── Makefile                   Build / install helpers
     ├── Resources/
     │   ├── AppIcon.icns           Dock/Finder app icon
     │   ├── MenuBarIconTemplate.png Monochrome menu bar icon
     │   └── Info.plist             App bundle metadata
-    └── Sources/GoLinks/
+    └── Sources/CommandShelf/
         ├── AppConfig.swift        Shared app constants and routes
         ├── CommandShelfApp.swift  @main – App + AppDelegate
         ├── GoLinkStore.swift      Link model + UserDefaults persistence

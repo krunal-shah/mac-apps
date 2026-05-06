@@ -1,5 +1,5 @@
 import XCTest
-@testable import CommandShelf
+@testable import GoLinks
 
 final class GoLinkCoreTests: XCTestCase {
     func testNameNormalizationAcceptsCommonInput() throws {
