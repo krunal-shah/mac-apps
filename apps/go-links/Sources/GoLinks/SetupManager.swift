@@ -124,7 +124,7 @@ final class SetupManager: ObservableObject {
         CERT_PATH="\(AppConfig.certificatePath)"
         KEY_PATH="\(AppConfig.privateKeyPath)"
         P12_PATH="\(AppConfig.p12Path)"
-        P12_PASSWORD="\(AppConfig.p12Password)"
+        P12_PASSWORD_PATH="\(AppConfig.p12PasswordPath)"
         USER_HOME="\(NSHomeDirectory())"
 
         if ! /usr/bin/grep -Eq "^[[:space:]]*127[.]0[.]0[.]1[[:space:]]+([^#[:space:]]+[[:space:]]+)*${HOST_NAME}([[:space:]]|$)" /etc/hosts; then
@@ -195,13 +195,16 @@ final class SetupManager: ObservableObject {
                     -days 3650 -nodes -config "$SSL_CONFIG" 2>/dev/null
                 /bin/rm -f "$SSL_CONFIG"
             fi
+
+            P12_PASSWORD="$(/usr/bin/openssl rand -base64 24 | /usr/bin/tr -d '\\n')"
             /usr/bin/openssl pkcs12 -export \\
                 -inkey "$KEY_PATH" \\
                 -in "$CERT_PATH" \\
                 -out "$P12_PATH" \\
                 -passout pass:"$P12_PASSWORD" 2>/dev/null
+            /usr/bin/printf '%s' "$P12_PASSWORD" > "$P12_PASSWORD_PATH"
             /bin/chmod 644 "$CERT_PATH" "$P12_PATH"
-            /bin/chmod 600 "$KEY_PATH"
+            /bin/chmod 600 "$KEY_PATH" "$P12_PASSWORD_PATH"
 
             if [ "$USED_MKCERT" -eq 0 ]; then
                 /usr/bin/security add-trusted-cert -d -r trustRoot \\

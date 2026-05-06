@@ -21,7 +21,20 @@ enum AppConfig {
     static let certificatePath = "/Library/GoLinks/server.crt"
     static let privateKeyPath = "/Library/GoLinks/server.key"
     static let p12Path = "/Library/GoLinks/server.p12"
-    static let p12Password = "golinks123"
+    static let p12PasswordPath = "/Library/GoLinks/server.password"
+
+    // Per-install passphrase for the locally-generated self-signed PKCS#12 bundle.
+    // The setup shell script writes a random value to p12PasswordPath when it
+    // (re)generates the cert; reads here pick that up. Falls back to the legacy
+    // hardcoded value so installs created before this change keep working until
+    // their cert is regenerated.
+    static var p12Password: String {
+        if let stored = try? String(contentsOfFile: p12PasswordPath, encoding: .utf8) {
+            let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        return "golinks123"
+    }
 
     static let defaultsKey = "go_links_v2"
     static let legacyDefaultsKey = "go_links_v1"

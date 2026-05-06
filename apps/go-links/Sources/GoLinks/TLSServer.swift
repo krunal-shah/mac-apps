@@ -9,7 +9,6 @@ final class TLSServer {
     static let port = AppConfig.httpsNWPort
     static let certDir = AppConfig.certificateDirectory
     static let p12Path = AppConfig.p12Path
-    static let p12Password = AppConfig.p12Password
 
     // MARK: - State
 
@@ -71,7 +70,7 @@ final class TLSServer {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: Self.p12Path)) else {
             return nil
         }
-        let opts: [String: Any] = [kSecImportExportPassphrase as String: Self.p12Password]
+        let opts: [String: Any] = [kSecImportExportPassphrase as String: AppConfig.p12Password]
         var items: CFArray?
         guard SecPKCS12Import(data as CFData, opts as CFDictionary, &items) == errSecSuccess,
               let arr = items as? [[String: Any]],
