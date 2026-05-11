@@ -17,13 +17,24 @@ MENU_BAR_ICON_FILE = Resources/MenuBarIconTemplate.png
 INSTALL_DIR = /Applications
 ZIP_FILE    = $(BUILD_DIR)/$(APP_NAME).app.zip
 
-.PHONY: build app install clean run open test release-zip
+.PHONY: build build-direct app install clean run open test release-zip
 
 # ------------------------------------
-# 1. Compile with Swift Package Manager
+# 1. Compile with Swift Package Manager.
+#    If SPM fails (e.g. missing PackageDescription module on broken CLT
+#    installs), automatically fall back to direct swiftc build.
 # ------------------------------------
 build:
-	swift build -c release 2>&1
+	@if swift build -c release 2>&1; then \
+		true; \
+	else \
+		echo "→ SPM build failed; falling back to direct swiftc build."; \
+		$(MAKE) build-direct; \
+	fi
+
+# Direct swiftc build (SPM-independent).
+build-direct:
+	./Scripts/build-direct.sh
 
 # ------------------------------------
 # 2. Package into .app bundle

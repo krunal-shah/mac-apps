@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var tlsServer: TLSServer?
     static var pasteStore: PasteStore?
     static var clipboardMonitor: ClipboardMonitor?
+    static var paletteController: PaletteController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Self.server?.start()
@@ -17,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let pasteStore = Self.pasteStore {
             Self.clipboardMonitor?.start(store: pasteStore)
         }
+        Self.paletteController?.install()
         Task { @MainActor in await SetupManager.shared.reapplyPFIfNeeded() }
     }
 
@@ -37,6 +39,7 @@ struct CommandShelfApp: App {
     @StateObject private var pasteStore: PasteStore
     @StateObject private var clipboardMonitor: ClipboardMonitor
     @StateObject private var setup: SetupManager
+    @StateObject private var paletteController: PaletteController
 
     private let server: HTTPServer
     private let tlsServer: TLSServer
@@ -50,11 +53,13 @@ struct CommandShelfApp: App {
         let router = GoLinkRouter(linkResolver: linkResolver, pasteResolver: pasteResolver)
         let server = HTTPServer(router: router)
         let tlsServer = TLSServer(router: router)
+        let paletteController = PaletteController()
 
         _store = StateObject(wrappedValue: store)
         _pasteStore = StateObject(wrappedValue: pasteStore)
         _clipboardMonitor = StateObject(wrappedValue: clipboardMonitor)
         _setup = StateObject(wrappedValue: SetupManager.shared)
+        _paletteController = StateObject(wrappedValue: paletteController)
         self.server = server
         self.tlsServer = tlsServer
 
@@ -63,6 +68,7 @@ struct CommandShelfApp: App {
         AppDelegate.tlsServer = tlsServer
         AppDelegate.pasteStore = pasteStore
         AppDelegate.clipboardMonitor = clipboardMonitor
+        AppDelegate.paletteController = paletteController
     }
 
     var body: some Scene {
