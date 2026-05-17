@@ -10,15 +10,21 @@ final class PaletteController: ObservableObject {
 
     let goLinkStore: GoLinkStore
     let pasteStore: PasteStore
+    let triggerStore: TriggerStore
 
     private let hotKey = GlobalHotKey()
     private var panel: PalettePanel?
     private var resignObserver: NSObjectProtocol?
     private var lastActiveAppBundleID: String?
 
-    init(goLinkStore: GoLinkStore, pasteStore: PasteStore) {
+    init(
+        goLinkStore: GoLinkStore,
+        pasteStore: PasteStore,
+        triggerStore: TriggerStore
+    ) {
         self.goLinkStore = goLinkStore
         self.pasteStore = pasteStore
+        self.triggerStore = triggerStore
     }
 
     func install() {
@@ -42,6 +48,10 @@ final class PaletteController: ObservableObject {
     }
 
     func open() {
+        // Re-read triggers from the vault each show so Obsidian edits land
+        // immediately without restarting Command Shelf.
+        triggerStore.reload()
+
         let panel = ensurePanel()
         rememberFrontApp()
         positionAboveScreenCenter(panel)
@@ -88,6 +98,7 @@ final class PaletteController: ObservableObject {
                 .environmentObject(self)
                 .environmentObject(goLinkStore)
                 .environmentObject(pasteStore)
+                .environmentObject(triggerStore)
         )
         host.autoresizingMask = [.width, .height]
         if let contentView = panel.contentView {

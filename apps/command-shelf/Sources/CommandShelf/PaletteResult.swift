@@ -4,30 +4,39 @@ import AppKit
 enum PaletteResult: Identifiable, Equatable {
     case goLink(GoLink)
     case paste(PasteItem)
+    case trigger(TriggerDefinition, input: String)
 
     var id: String {
         switch self {
         case .goLink(let link): return "go:\(link.id.uuidString)"
         case .paste(let paste): return "paste:\(paste.id)"
+        case .trigger(let def, _): return "trigger:\(def.id)"
         }
     }
 
     var title: String {
         switch self {
-        case .goLink(let link): return "go/\(link.shortName)"
-        case .paste(let paste): return paste.title
+        case .goLink(let link):
+            return "go/\(link.shortName)"
+        case .paste(let paste):
+            return paste.title
+        case .trigger(let def, let input):
+            return input.isEmpty ? def.keyword : "\(def.keyword) \(input)"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .goLink(let link): return link.destinationURL
+        case .goLink(let link):
+            return link.destinationURL
         case .paste(let paste):
             let collapsed = paste.body
                 .replacingOccurrences(of: "\r\n", with: " ")
                 .replacingOccurrences(of: "\n", with: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return String(collapsed.prefix(120))
+        case .trigger(let def, _):
+            return def.description ?? def.label
         }
     }
 
@@ -35,6 +44,7 @@ enum PaletteResult: Identifiable, Equatable {
         switch self {
         case .goLink: return "link"
         case .paste: return "doc.on.clipboard"
+        case .trigger(let def, _): return def.action.systemImage
         }
     }
 
@@ -42,6 +52,15 @@ enum PaletteResult: Identifiable, Equatable {
         switch self {
         case .goLink: return "Open"
         case .paste: return "Copy"
+        case .trigger(let def, _): return def.action.kindLabel
+        }
+    }
+
+    var sectionTitle: String {
+        switch self {
+        case .goLink: return "Go Links"
+        case .paste: return "Pastes"
+        case .trigger: return "Triggers"
         }
     }
 }
@@ -53,7 +72,8 @@ enum PaletteSearch {
     static func rank(
         query rawQuery: String,
         goLinks: [GoLink],
-        pastes: [PasteItem]
+        pastes: [PasteItem],
+        triggers: [TriggerDefinition] = []
     ) -> [PaletteResult] {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
@@ -65,6 +85,10 @@ enum PaletteSearch {
             return Array(topLinks) + Array(topPastes)
         }
 
+        // Triggers always lead when the keyword matches. Even on a prefix match
+        // they're surfaced so the user discovers what's available.
+        let triggerResults = matchTriggers(query: query, triggers: triggers)
+
         var scored: [(score: Int, result: PaletteResult)] = []
         for link in goLinks {
             let s = score(query: query, primary: link.shortName, secondary: link.destinationURL)
@@ -74,9 +98,38 @@ enum PaletteSearch {
             let s = score(query: query, primary: paste.title, secondary: paste.body)
             if s > 0 { scored.append((s, .paste(paste))) }
         }
-        return scored
+        let providerResults = scored
             .sorted { $0.score > $1.score }
             .map(\.result)
+
+        return triggerResults + providerResults
+    }
+
+    private static func matchTriggers(
+        query: String,
+        triggers: [TriggerDefinition]
+    ) -> [PaletteResult] {
+        guard !triggers.isEmpty, !query.isEmpty else { return [] }
+
+        let parts = query.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+        let firstToken = parts.isEmpty ? query : String(parts[0]).lowercased()
+        let rest = parts.count > 1 ? String(parts[1]) : ""
+
+        var exact: [PaletteResult] = []
+        var prefix: [PaletteResult] = []
+
+        for trigger in triggers {
+            let keyword = trigger.keyword.lowercased()
+            if keyword == firstToken {
+                exact.append(.trigger(trigger, input: rest))
+            } else if rest.isEmpty,
+                      keyword.hasPrefix(firstToken),
+                      firstToken.count >= 1 {
+                prefix.append(.trigger(trigger, input: ""))
+            }
+        }
+
+        return exact + prefix
     }
 
     /// Score one candidate's two text fields against the query.
@@ -112,6 +165,14 @@ enum PaletteAction {
             open(urlString: link.destinationURL)
         case .paste(let paste):
             copy(text: paste.body)
+        case .trigger(let def, let input):
+            // v0: surface only — actual Claude/Syl wiring lands in the
+            // next commits (SylClient + action execution).
+            NSLog(
+                "[CommandShelf] Trigger '%@' fired with input '%@' (action wiring pending)",
+                def.keyword,
+                input
+            )
         }
     }
 

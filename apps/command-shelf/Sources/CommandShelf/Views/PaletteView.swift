@@ -5,6 +5,7 @@ struct PaletteView: View {
     @EnvironmentObject private var controller: PaletteController
     @EnvironmentObject private var goLinks: GoLinkStore
     @EnvironmentObject private var pastes: PasteStore
+    @EnvironmentObject private var triggers: TriggerStore
 
     @State private var query: String = ""
     @State private var selectedIndex: Int = 0
@@ -14,7 +15,8 @@ struct PaletteView: View {
         PaletteSearch.rank(
             query: query,
             goLinks: goLinks.links,
-            pastes: pastes.pastes
+            pastes: pastes.pastes,
+            triggers: triggers.triggers
         )
     }
 
@@ -156,14 +158,12 @@ struct PaletteView: View {
     }
 
     private var slots: [Slot] {
-        let showHeaders = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        guard showHeaders else {
-            return results.enumerated().map { Slot.row($0.element, flatIndex: $0.offset) }
-        }
+        // With a query active we always show headers — they help disambiguate
+        // a trigger keyword match from a same-letter go-link/paste match.
         var out: [Slot] = []
         var lastKind: String? = nil
         for (idx, result) in results.enumerated() {
-            let kind = sectionTitle(for: result)
+            let kind = result.sectionTitle
             if kind != lastKind {
                 out.append(.header(kind))
                 lastKind = kind
@@ -171,13 +171,6 @@ struct PaletteView: View {
             out.append(.row(result, flatIndex: idx))
         }
         return out
-    }
-
-    private func sectionTitle(for result: PaletteResult) -> String {
-        switch result {
-        case .goLink: return "Go Links"
-        case .paste: return "Pastes"
-        }
     }
 
     // MARK: - Selection

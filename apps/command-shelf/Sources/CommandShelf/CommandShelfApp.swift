@@ -53,9 +53,11 @@ struct CommandShelfApp: App {
         let router = GoLinkRouter(linkResolver: linkResolver, pasteResolver: pasteResolver)
         let server = HTTPServer(router: router)
         let tlsServer = TLSServer(router: router)
+        let triggerStore = TriggerStore()
         let paletteController = PaletteController(
             goLinkStore: store,
-            pasteStore: pasteStore
+            pasteStore: pasteStore,
+            triggerStore: triggerStore
         )
 
         _store = StateObject(wrappedValue: store)
