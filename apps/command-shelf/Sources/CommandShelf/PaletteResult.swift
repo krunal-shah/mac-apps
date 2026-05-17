@@ -157,35 +157,3 @@ enum PaletteSearch {
     }
 }
 
-enum PaletteAction {
-    @MainActor
-    static func activate(_ result: PaletteResult) {
-        switch result {
-        case .goLink(let link):
-            open(urlString: link.destinationURL)
-        case .paste(let paste):
-            copy(text: paste.body)
-        case .trigger(let def, let input):
-            // v0: surface only — actual Claude/Syl wiring lands in the
-            // next commits (SylClient + action execution).
-            NSLog(
-                "[CommandShelf] Trigger '%@' fired with input '%@' (action wiring pending)",
-                def.keyword,
-                input
-            )
-        }
-    }
-
-    @MainActor
-    private static func open(urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        NSWorkspace.shared.open(url)
-    }
-
-    @MainActor
-    private static func copy(text: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-    }
-}

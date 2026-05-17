@@ -91,8 +91,8 @@ enum TriggerSeed {
           "action": {
             "type": "syl_api",
             "method": "POST",
-            "endpoint": "/api/reading",
-            "body": { "raw": "{input}" }
+            "endpoint": "/api/reading/inbox",
+            "body": { "text": "{input}" }
           }
         },
         {

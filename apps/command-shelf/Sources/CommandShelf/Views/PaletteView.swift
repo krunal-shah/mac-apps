@@ -70,7 +70,10 @@ struct PaletteView: View {
 
     @ViewBuilder
     private var resultsArea: some View {
-        if results.isEmpty {
+        if let status = controller.actionStatus {
+            StatusBanner(status: status)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if results.isEmpty {
             emptyState
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -186,9 +189,10 @@ struct PaletteView: View {
     }
 
     private func activateSelected() {
+        // Suppress accidental re-fire while an async action is in flight.
+        if case .running = controller.actionStatus { return }
         guard let target = currentResult else { return }
-        PaletteAction.activate(target)
-        controller.close()
+        controller.activate(target)
     }
 
     // MARK: - Keyboard
@@ -220,6 +224,34 @@ struct PaletteView: View {
             NSEvent.removeMonitor(keyMonitor)
         }
         keyMonitor = nil
+    }
+}
+
+// MARK: - Status banner
+
+private struct StatusBanner: View {
+    let status: ActionStatus
+
+    var body: some View {
+        VStack(spacing: AppTheme.spacing10) {
+            Image(systemName: status.symbol)
+                .font(.system(size: 26, weight: .regular))
+                .foregroundStyle(tint)
+            Text(status.message)
+                .font(AppTheme.sans(13, weight: .medium))
+                .foregroundStyle(AppTheme.shelfInk)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppTheme.spacing20)
+        }
+        .padding(.vertical, AppTheme.spacing20)
+    }
+
+    private var tint: Color {
+        switch status {
+        case .running: return AppTheme.shelfInkSecondary
+        case .success: return AppTheme.shelfReady
+        case .failure: return AppTheme.shelfDanger
+        }
     }
 }
 
