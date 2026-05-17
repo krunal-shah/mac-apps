@@ -70,7 +70,14 @@ struct PaletteView: View {
 
     @ViewBuilder
     private var resultsArea: some View {
-        if let status = controller.actionStatus {
+        if controller.streamingResponse != nil {
+            StreamingResponseView(
+                header: controller.streamingHeader,
+                text: controller.streamingResponse ?? "",
+                isDone: controller.streamingDone
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let status = controller.actionStatus {
             StatusBanner(status: status)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if results.isEmpty {
@@ -132,13 +139,21 @@ struct PaletteView: View {
 
     private var footer: some View {
         HStack(spacing: AppTheme.spacing12) {
-            if let selected = currentResult {
+            if controller.streamingResponse != nil {
+                if controller.streamingDone {
+                    KbdGlyph(symbol: "✓", label: "Copied to clipboard")
+                } else {
+                    KbdGlyph(symbol: "•••", label: "Streaming…")
+                }
+            } else if let selected = currentResult {
                 KbdGlyph(symbol: "↵", label: selected.kindLabel)
             } else {
                 KbdGlyph(symbol: "↵", label: "Run")
             }
             Spacer()
-            KbdGlyph(symbol: "↑↓", label: "Navigate")
+            if controller.streamingResponse == nil {
+                KbdGlyph(symbol: "↑↓", label: "Navigate")
+            }
             KbdGlyph(symbol: "⎋", label: "Dismiss")
         }
         .padding(.horizontal, AppTheme.spacing12)
@@ -191,6 +206,7 @@ struct PaletteView: View {
     private func activateSelected() {
         // Suppress accidental re-fire while an async action is in flight.
         if case .running = controller.actionStatus { return }
+        if controller.streamingResponse != nil { return }
         guard let target = currentResult else { return }
         controller.activate(target)
     }
@@ -224,6 +240,40 @@ struct PaletteView: View {
             NSEvent.removeMonitor(keyMonitor)
         }
         keyMonitor = nil
+    }
+}
+
+// MARK: - Streaming response
+
+private struct StreamingResponseView: View {
+    let header: String
+    let text: String
+    let isDone: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacing8) {
+            HStack(spacing: AppTheme.spacing6) {
+                Image(systemName: isDone ? "checkmark.circle.fill" : "sparkles")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isDone ? AppTheme.shelfReady : AppTheme.shelfInkSecondary)
+                Text(header.isEmpty ? "Claude" : header)
+                    .font(AppTheme.sans(11, weight: .semibold))
+                    .tracking(0.4)
+                    .foregroundStyle(AppTheme.shelfInkSecondary)
+            }
+            .padding(.horizontal, AppTheme.spacing12)
+            .padding(.top, AppTheme.spacing10)
+
+            ScrollView(.vertical, showsIndicators: false) {
+                Text(text.isEmpty ? "…" : text)
+                    .font(AppTheme.sans(13, weight: .regular))
+                    .foregroundStyle(AppTheme.shelfInk)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, AppTheme.spacing12)
+                    .padding(.bottom, AppTheme.spacing12)
+            }
+        }
     }
 }
 

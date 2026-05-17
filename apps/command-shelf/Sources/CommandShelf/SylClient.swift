@@ -18,6 +18,13 @@ final class SylClient {
         self.session = session
     }
 
+    // MARK: - Stream event
+
+    private struct LauncherStreamEvent: Decodable {
+        let text: String?
+        let done: Bool?
+    }
+
     // MARK: - Errors
 
     enum SylClientError: LocalizedError {
@@ -91,6 +98,63 @@ final class SylClient {
             throw SylClientError.http(status: http.statusCode, body: body)
         }
         return data
+    }
+
+    /// Stream an SSE response, calling `onChunk` for each text chunk that
+    /// arrives. The closure runs on the main actor (the client is itself
+    /// main-isolated, so the for-await loop resumes here between awaits).
+    ///
+    /// Terminates when the server sends `{"done": true}` or the connection
+    /// closes. Throws on transport / HTTP / decode failures.
+    func stream(
+        method: String = "POST",
+        endpoint: String,
+        body: [String: String]? = nil,
+        onChunk: (String) -> Void
+    ) async throws {
+        let request = try makeRequest(method: method, endpoint: endpoint, body: body)
+
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await session.bytes(for: request)
+        } catch {
+            throw SylClientError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw SylClientError.http(status: 0, body: nil)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw SylClientError.http(status: http.statusCode, body: nil)
+        }
+
+        for try await line in bytes.lines {
+            // SSE protocol: lines starting with `data:` carry the payload;
+            // blank lines separate events; comment lines (`:`) ignored.
+            guard line.hasPrefix("data:") else { continue }
+            let payload = line
+                .dropFirst("data:".count)
+                .trimmingCharacters(in: .whitespaces)
+            guard !payload.isEmpty, payload != "[DONE]" else { continue }
+
+            guard let data = payload.data(using: .utf8) else { continue }
+            let event: LauncherStreamEvent
+            do {
+                event = try JSONDecoder().decode(LauncherStreamEvent.self, from: data)
+            } catch {
+                // Malformed chunks shouldn't kill the stream — log and continue.
+                NSLog("[CommandShelf] Stream decode error: %@ payload: %@", String(describing: error), payload)
+                continue
+            }
+
+            if let text = event.text, !text.isEmpty {
+                onChunk(text)
+            }
+            if event.done == true {
+                return
+            }
+        }
     }
 
     /// Cheap reachability probe — used by the palette to show a status badge.

@@ -8,6 +8,9 @@ final class PaletteController: ObservableObject {
 
     @Published private(set) var isVisible = false
     @Published var actionStatus: ActionStatus?
+    @Published var streamingResponse: String?
+    @Published var streamingDone: Bool = false
+    @Published var streamingHeader: String = ""
 
     let goLinkStore: GoLinkStore
     let pasteStore: PasteStore
@@ -60,6 +63,9 @@ final class PaletteController: ObservableObject {
         // immediately without restarting Command Shelf.
         triggerStore.reload()
         actionStatus = nil
+        streamingResponse = nil
+        streamingDone = false
+        streamingHeader = ""
         statusClearTask?.cancel()
 
         let panel = ensurePanel()
@@ -73,6 +79,9 @@ final class PaletteController: ObservableObject {
     func close() {
         statusClearTask?.cancel()
         actionStatus = nil
+        streamingResponse = nil
+        streamingDone = false
+        streamingHeader = ""
         guard let panel else { return }
         panel.orderOut(nil)
         isVisible = false
@@ -96,15 +105,11 @@ final class PaletteController: ObservableObject {
 
     private func runTrigger(_ def: TriggerDefinition, input: String) async {
         switch def.action {
-        case .clipboard, .streamInline:
-            // Pending: Claude generation wires in a follow-up commit.
-            actionStatus = .failure("Claude-backed triggers wire in the next commit.")
-            scheduleStatusClear(after: 1.6, andClose: true)
-            NSLog(
-                "[CommandShelf] Trigger '%@' (%@) pending Claude wiring",
-                def.keyword,
-                String(describing: def.action)
-            )
+        case .clipboard:
+            await runClipboardTrigger(def, input: input)
+
+        case .streamInline(let context):
+            await runStreamingTrigger(def, input: input, context: context)
 
         case .sylApi(let method, let endpoint, let bodyTemplate):
             actionStatus = .running("Sending to Syl…")
@@ -121,6 +126,83 @@ final class PaletteController: ObservableObject {
                 scheduleStatusClear(after: 2.4, andClose: false)
                 NSLog("[CommandShelf] Trigger '%@' → %@ FAILED: %@", def.keyword, endpoint, message)
             }
+        }
+    }
+
+    private func runClipboardTrigger(_ def: TriggerDefinition, input: String) async {
+        guard let prompt = def.prompt, !prompt.isEmpty else {
+            actionStatus = .failure("Trigger has no prompt template.")
+            scheduleStatusClear(after: 2.0, andClose: false)
+            return
+        }
+        let hydrated = def.hydrate(template: prompt, input: input)
+        actionStatus = .running("Drafting with Claude…")
+
+        var accumulated = ""
+        do {
+            try await sylClient.stream(
+                endpoint: "/api/launcher/generate",
+                body: ["prompt": hydrated]
+            ) { chunk in
+                accumulated += chunk
+            }
+            let trimmed = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                actionStatus = .failure("Claude returned an empty response.")
+                scheduleStatusClear(after: 2.0, andClose: false)
+                return
+            }
+            copyToClipboard(trimmed)
+            actionStatus = .success("Copied draft (\(trimmed.count) chars)")
+            scheduleStatusClear(after: 1.2, andClose: true)
+            NSLog("[CommandShelf] Trigger '%@' clipboard draft copied (%d chars)", def.keyword, trimmed.count)
+        } catch {
+            let message = (error as? SylClient.SylClientError)?.errorDescription
+                ?? error.localizedDescription
+            actionStatus = .failure(message)
+            scheduleStatusClear(after: 2.4, andClose: false)
+            NSLog("[CommandShelf] Trigger '%@' clipboard FAILED: %@", def.keyword, message)
+        }
+    }
+
+    private func runStreamingTrigger(_ def: TriggerDefinition, input: String, context: String) async {
+        guard let prompt = def.prompt, !prompt.isEmpty else {
+            actionStatus = .failure("Trigger has no prompt template.")
+            scheduleStatusClear(after: 2.0, andClose: false)
+            return
+        }
+        let hydrated = def.hydrate(template: prompt, input: input)
+
+        streamingResponse = ""
+        streamingDone = false
+        streamingHeader = def.label
+
+        var body: [String: String] = ["prompt": hydrated]
+        if !context.isEmpty, context != "none" {
+            body["context"] = context
+        }
+
+        do {
+            try await sylClient.stream(
+                endpoint: "/api/launcher/generate",
+                body: body
+            ) { [weak self] chunk in
+                guard let self else { return }
+                self.streamingResponse = (self.streamingResponse ?? "") + chunk
+            }
+            streamingDone = true
+            // Auto-copy the full response so the user can dismiss + paste anywhere.
+            if let final = streamingResponse?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !final.isEmpty {
+                copyToClipboard(final)
+            }
+            NSLog("[CommandShelf] Trigger '%@' stream done (%d chars)", def.keyword, streamingResponse?.count ?? 0)
+        } catch {
+            let message = (error as? SylClient.SylClientError)?.errorDescription
+                ?? error.localizedDescription
+            streamingResponse = "Error: \(message)"
+            streamingDone = true
+            NSLog("[CommandShelf] Trigger '%@' stream FAILED: %@", def.keyword, message)
         }
     }
 
