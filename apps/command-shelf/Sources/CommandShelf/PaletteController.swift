@@ -8,10 +8,18 @@ final class PaletteController: ObservableObject {
 
     @Published private(set) var isVisible = false
 
+    let goLinkStore: GoLinkStore
+    let pasteStore: PasteStore
+
     private let hotKey = GlobalHotKey()
     private var panel: PalettePanel?
     private var resignObserver: NSObjectProtocol?
     private var lastActiveAppBundleID: String?
+
+    init(goLinkStore: GoLinkStore, pasteStore: PasteStore) {
+        self.goLinkStore = goLinkStore
+        self.pasteStore = pasteStore
+    }
 
     func install() {
         let didRegister = hotKey.register(
@@ -75,7 +83,12 @@ final class PaletteController: ObservableObject {
         panel.titlebarAppearsTransparent = true
         panel.onCancel = { [weak self] in self?.close() }
 
-        let host = NSHostingView(rootView: PaletteView().environmentObject(self))
+        let host = NSHostingView(
+            rootView: PaletteView()
+                .environmentObject(self)
+                .environmentObject(goLinkStore)
+                .environmentObject(pasteStore)
+        )
         host.autoresizingMask = [.width, .height]
         if let contentView = panel.contentView {
             host.frame = contentView.bounds
